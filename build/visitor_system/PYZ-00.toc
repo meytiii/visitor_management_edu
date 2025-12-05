@@ -1,4 +1,4 @@
-('C:\\Users\\ASUS\\Desktop\\Stuff\\Projects\\visitor\\build\\visitor_system\\PYZ-00.pyz',
+('C:\\Users\\ASUS\\Desktop\\Stuff\\Github\\visitor_management_edu\\build\\visitor_system\\PYZ-00.pyz',
  [('__future__', 'C:\\Python314\\Lib\\__future__.py', 'PYMODULE'),
   ('_ast_unparse', 'C:\\Python314\\Lib\\_ast_unparse.py', 'PYMODULE'),
   ('_colorize', 'C:\\Python314\\Lib\\_colorize.py', 'PYMODULE'),
