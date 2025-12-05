@@ -7,12 +7,11 @@ import tempfile
 import platform
 import jdatetime
 
-# --- Constants ---
 DEPARTMENT_LIST = [
     "اداره حراست", "فناوری و اطلاعات", "نقل و انتقالات",
     "معاونت پژوهش", "معاونت ابتدایی" , "معاونت متوسطه", "دفتر مدیر کل"
 ]
-# Persian Month Names for the Dropdown
+
 PERSIAN_MONTHS = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
@@ -113,19 +112,15 @@ def open_search_window():
     entry_search_nid = ttk.Entry(search_frame, justify='right')
     entry_search_nid.grid(row=0, column=2, sticky=tk.EW, padx=5, pady=5)
     
-    # --- NEW DATE DROPDOWNS ---
     ttk.Label(search_frame, text="تاریخ:").grid(row=1, column=5, sticky=tk.E, padx=(15, 5), pady=5)
     
-    # Day (1-31)
     days = [str(i) for i in range(1, 32)]
     combo_day = ttk.Combobox(search_frame, values=[""] + days, justify='center', width=3, state='readonly')
     combo_day.grid(row=1, column=4, sticky=tk.E, padx=(0, 5))
     
-    # Month (Names)
     combo_month = ttk.Combobox(search_frame, values=[""] + PERSIAN_MONTHS, justify='center', width=10, state='readonly')
     combo_month.grid(row=1, column=4, sticky=tk.E, padx=(0, 55))
     
-    # Year (1400-1410) - You can adjust this range
     years = [str(i) for i in range(1400, 1411)] 
     combo_year = ttk.Combobox(search_frame, values=[""] + years, justify='center', width=5, state='readonly')
     combo_year.grid(row=1, column=4, sticky=tk.W, padx=(0, 0))
@@ -164,14 +159,12 @@ def open_search_window():
         
         y, m_name, d = filters.get("year"), filters.get("month_name"), filters.get("day")
         
-        # Convert Month Name to Number (e.g., "فروردین" -> "01")
         m = ""
         if m_name in PERSIAN_MONTHS:
             m_index = PERSIAN_MONTHS.index(m_name) + 1
             m = f"{m_index:02d}"
             
         if y or m or d:
-            # Build the date string for filtering (e.g., "1403/09")
             date_str = f"{y or ''}{'/' if (y and (m or d)) else ''}{m if m else ''}{'/' if (m and d) else ''}{d.zfill(2) if d else ''}"
             query += " AND shamsi_date LIKE ?"; params.append(f"{date_str}%")
             
@@ -182,7 +175,7 @@ def open_search_window():
             "name": entry_search_name.get(), 
             "nid": entry_search_nid.get(), 
             "year": combo_year.get(), 
-            "month_name": combo_month.get(), # Pass the name
+            "month_name": combo_month.get(),
             "day": combo_day.get(), 
             "dept": combo_search_dept.get()
         })
@@ -228,12 +221,10 @@ def open_search_window():
                 cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
                 conn.commit(); conn.close()
                 
-                popup.destroy() # Close popup first
-                search_action() # Refresh table
+                popup.destroy()
+                search_action()
                 
                 # --- FOCUS FIX ---
-                # 1. Show success message attached to search_win (parent=search_win)
-                # 2. This prevents the main window from coming to front
                 messagebox.showinfo("موفق", "ساعت خروج با موفقیت ثبت شد", parent=search_win)
                 
             except Exception as e:
