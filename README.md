@@ -32,5 +32,5 @@ Ensure you have [Python](https://www.python.org/) installed on your machine.
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-cd YOUR_REPO_NAME
+git clone https://github.com/meytiii/visitor_management_edu.git
+cd visitor_management_edu
