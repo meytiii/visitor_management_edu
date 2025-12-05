@@ -255,7 +255,7 @@ def open_search_window():
 
 # --- Main Application Setup ---
 app = tk.Tk()
-app.title("سیستم مدیریت ورود و خروج (اداره حراست)")
+app.title("سامانه مدیریت ورود و خروج (اداره حراست)")
 app.geometry("500x420")
 app.resizable(False, False)
 app.configure(bg=DEFAULT_BG_COLOR)
