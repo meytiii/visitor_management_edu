@@ -153,22 +153,32 @@ def open_search_window():
         conn = sqlite3.connect('visitor_log.db'); cursor = conn.cursor()
         query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors WHERE 1=1"
         params = []
+        
         if filters.get("name"): query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
         if filters.get("nid"): query += " AND national_id LIKE ?"; params.append(f"%{filters['nid']}%")
         if filters.get("dept"): query += " AND department = ?"; params.append(filters['dept'])
         
+        # --- FLEXIBLE DATE LOGIC ---
         y, m_name, d = filters.get("year"), filters.get("month_name"), filters.get("day")
         
-        m = ""
+        if y:
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"{y}%")
+            
         if m_name in PERSIAN_MONTHS:
             m_index = PERSIAN_MONTHS.index(m_name) + 1
             m = f"{m_index:02d}"
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"%/{m}/%")
             
-        if y or m or d:
-            date_str = f"{y or ''}{'/' if (y and (m or d)) else ''}{m if m else ''}{'/' if (m and d) else ''}{d.zfill(2) if d else ''}"
-            query += " AND shamsi_date LIKE ?"; params.append(f"{date_str}%")
-            
+        if d:
+            d_padded = d.zfill(2)
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"%/{d_padded}")
+        # -------------------------------
+
         query += " ORDER BY id DESC"; cursor.execute(query, params); populate_tree(cursor.fetchall()); conn.close()
+
 
     def search_action(): 
         fetch_and_display_records({
