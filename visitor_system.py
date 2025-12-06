@@ -141,19 +141,27 @@ def open_search_window():
     columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time")
     
     # --- CUSTOM STYLE FOR TREEVIEW ---
-    # 1. Treeview content (Rows) -> B Nazanin Bold, Size 13
-    # 2. Treeview Heading -> B Titr, Size 12
-    style.configure("Custom.Treeview", font=("B Nazanin", 13, "bold"), rowheight=35)
+    # Changed font to "B Yekan"
+    style.configure("Custom.Treeview", font=("B Yekan", 13), rowheight=35)
     style.configure("Custom.Treeview.Heading", font=("B Titr", 12))
+
 
     tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview")
     headings = {"id": "شماره", "visitor_name": "نام مهمان", "national_id": "کد ملی", "employee_to_meet": "ملاقات شونده", "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج"}
-    for col, text in headings.items(): tree.heading(col, text=text)
-    for col in columns: tree.column(col, anchor=tk.E)
+    
+    for col, text in headings.items(): 
+        tree.heading(col, text=text)
+    
+    # --- CHANGED TO CENTER ALIGNMENT ---
+    for col in columns: 
+        tree.column(col, anchor=tk.CENTER) # Changed from tk.E to tk.CENTER
+        
     widths = {"id": 60, "visitor_name": 150, "national_id": 100, "employee_to_meet": 150, "department": 120, "entry_time": 80, "shamsi_date": 100, "exit_time": 80}
     for col, width in widths.items(): tree.column(col, width=width)
+    
     scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set); scrollbar.pack(side=tk.RIGHT, fill=tk.Y); tree.pack(expand=True, fill=tk.BOTH)
+
 
     # --- Data Functions ---
     def populate_tree(records):
