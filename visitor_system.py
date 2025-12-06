@@ -7,11 +7,12 @@ import tempfile
 import platform
 import jdatetime
 
+# --- Constants ---
+APP_VERSION = "1.1.0"
 DEPARTMENT_LIST = [
     "اداره حراست", "فناوری و اطلاعات", "نقل و انتقالات",
     "معاونت پژوهش", "معاونت ابتدایی" , "معاونت متوسطه", "دفتر مدیر کل"
 ]
-
 PERSIAN_MONTHS = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
@@ -41,7 +42,7 @@ def setup_database():
     conn.commit(); conn.close()
 
 def show_help_popup():
-    help_text = "در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573"
+    help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
 
 def submit_visitor():
@@ -66,20 +67,23 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
     receipt_content = f"""
 *****************************************
     اداره کل آموزش و پرورش استان همدان   
-              (حراست)        
+              (اداره حراست)        
 *****************************************
 شماره: {visitor_id:06d}
 تاریخ: {shamsi_date}
 -----------------------------------------
 ملاقات کننده: {name}
-شماره مدرک: {nid}
+شماره ملی : {nid}
 ملاقات شونده: {emp}
 امور / واحد: {dept}
 ساعت ورود: {entry_dt.strftime("%H:%M")}
 ساعت خروج: .........................
 -----------------------------------------
 * حداکثر زمان حضور ۲ ساعت می باشد *
+
 امضاء نگهبان: .....................
+
+
 امضاء ملاقات شونده: .....................
 *****************************************
 """
@@ -100,19 +104,22 @@ def open_search_window():
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
     search_win.title("مشاهده و جستجوی سوابق")
-    search_win.geometry("950x600")
+    # Increased size for larger fonts
+    search_win.geometry("1150x700")
     
     # --- Search UI ---
     search_frame = ttk.LabelFrame(search_win, text="فیلترهای جستجو", padding=(10, 10))
     search_frame.pack(fill=tk.X, padx=10, pady=5)
-    ttk.Label(search_frame, text="نام مهمان:").grid(row=0, column=5, sticky=tk.E, padx=(15, 5), pady=5)
+    
+    # Keeping your colons on the left
+    ttk.Label(search_frame, text=": نام مهمان").grid(row=0, column=5, sticky=tk.E, padx=(15, 5), pady=5)
     entry_search_name = ttk.Entry(search_frame, justify='right')
     entry_search_name.grid(row=0, column=4, sticky=tk.EW, padx=5, pady=5)
-    ttk.Label(search_frame, text="کد ملی:").grid(row=0, column=3, sticky=tk.E, padx=(15, 5), pady=5)
+    ttk.Label(search_frame, text=": کد ملی").grid(row=0, column=3, sticky=tk.E, padx=(15, 5), pady=5)
     entry_search_nid = ttk.Entry(search_frame, justify='right')
     entry_search_nid.grid(row=0, column=2, sticky=tk.EW, padx=5, pady=5)
     
-    ttk.Label(search_frame, text="تاریخ:").grid(row=1, column=5, sticky=tk.E, padx=(15, 5), pady=5)
+    ttk.Label(search_frame, text=": تاریخ").grid(row=1, column=5, sticky=tk.E, padx=(15, 5), pady=5)
     
     days = [str(i) for i in range(1, 32)]
     combo_day = ttk.Combobox(search_frame, values=[""] + days, justify='center', width=3, state='readonly')
@@ -125,14 +132,21 @@ def open_search_window():
     combo_year = ttk.Combobox(search_frame, values=[""] + years, justify='center', width=5, state='readonly')
     combo_year.grid(row=1, column=4, sticky=tk.W, padx=(0, 0))
     
-    ttk.Label(search_frame, text="واحد:").grid(row=1, column=3, sticky=tk.E, padx=(15, 5), pady=5)
+    ttk.Label(search_frame, text=": واحد").grid(row=1, column=3, sticky=tk.E, padx=(15, 5), pady=5)
     combo_search_dept = ttk.Combobox(search_frame, values=[""] + DEPARTMENT_LIST, justify='right', state='readonly'); combo_search_dept.grid(row=1, column=2, sticky=tk.EW, padx=5, pady=5)
     search_frame.columnconfigure(2, weight=1); search_frame.columnconfigure(4, weight=1)
     
     # --- Treeview ---
     tree_frame = ttk.Frame(search_win, padding=(10, 5)); tree_frame.pack(expand=True, fill=tk.BOTH)
     columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time")
-    tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse")
+    
+    # --- CUSTOM STYLE FOR TREEVIEW ---
+    # 1. Treeview content (Rows) -> B Nazanin Bold, Size 13
+    # 2. Treeview Heading -> B Titr, Size 12
+    style.configure("Custom.Treeview", font=("B Nazanin", 13, "bold"), rowheight=35)
+    style.configure("Custom.Treeview.Heading", font=("B Titr", 12))
+
+    tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview")
     headings = {"id": "شماره", "visitor_name": "نام مهمان", "national_id": "کد ملی", "employee_to_meet": "ملاقات شونده", "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج"}
     for col, text in headings.items(): tree.heading(col, text=text)
     for col in columns: tree.column(col, anchor=tk.E)
@@ -158,7 +172,6 @@ def open_search_window():
         if filters.get("nid"): query += " AND national_id LIKE ?"; params.append(f"%{filters['nid']}%")
         if filters.get("dept"): query += " AND department = ?"; params.append(filters['dept'])
         
-        # --- FLEXIBLE DATE LOGIC ---
         y, m_name, d = filters.get("year"), filters.get("month_name"), filters.get("day")
         
         if y:
@@ -175,10 +188,8 @@ def open_search_window():
             d_padded = d.zfill(2)
             query += " AND shamsi_date LIKE ?"
             params.append(f"%/{d_padded}")
-        # -------------------------------
-
+        
         query += " ORDER BY id DESC"; cursor.execute(query, params); populate_tree(cursor.fetchall()); conn.close()
-
 
     def search_action(): 
         fetch_and_display_records({
@@ -205,7 +216,6 @@ def open_search_window():
         existing_exit_time = item_values[7]
 
         if existing_exit_time and existing_exit_time.strip():
-             # Error popup attached to search_win
              messagebox.showerror("خطا", "ساعت خروج برای این مهمان ثبت شده و امکان ثبت ساعت جدید نمی باشد!", parent=search_win)
              return
 
@@ -220,8 +230,8 @@ def open_search_window():
         y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 90
         popup.geometry(f"+{x}+{y}")
 
-        tk.Label(popup, text=f":ثبت خروج برای\n{visitor_name}", font=("Segoe UI", 11, "bold")).pack(pady=10)
-        tk.Label(popup, text="ساعت خروج برای مهمان انتخاب شده ثبت شود؟", font=("Segoe UI", 10)).pack(pady=5)
+        tk.Label(popup, text=f":ثبت خروج برای\n{visitor_name}", font=("B Titr", 13, "bold")).pack(pady=10)
+        tk.Label(popup, text="ساعت خروج برای مهمان انتخاب شده ثبت شود؟", font=("B Titr", 12)).pack(pady=5)
 
         def confirm_exit():
             exit_time_str = datetime.now().strftime("%H:%M")
@@ -230,63 +240,67 @@ def open_search_window():
                 cursor = conn.cursor()
                 cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
                 conn.commit(); conn.close()
-                
                 popup.destroy()
                 search_action()
-                
-                # --- FOCUS FIX ---
                 messagebox.showinfo("موفق", "ساعت خروج با موفقیت ثبت شد", parent=search_win)
-                
             except Exception as e:
                 messagebox.showerror("خطا", f"خطا در ثبت ساعت خروج: {e}", parent=search_win)
 
         btn_frame = tk.Frame(popup)
         btn_frame.pack(pady=20)
         
-        tk.Button(btn_frame, text="بله", bg=GREEN_COLOR, fg="white", width=10, font=("Segoe UI", 10, "bold"), command=confirm_exit).pack(side=tk.RIGHT, padx=10)
-        tk.Button(btn_frame, text="خیر", bg=RED_COLOR, fg="white", width=10, font=("Segoe UI", 10, "bold"), command=popup.destroy).pack(side=tk.RIGHT, padx=10)
+        tk.Button(btn_frame, text="بله", bg=GREEN_COLOR, fg="white", width=10, font=("B Titr", 12, "bold"), command=confirm_exit).pack(side=tk.RIGHT, padx=10)
+        tk.Button(btn_frame, text="خیر", bg=RED_COLOR, fg="white", width=10, font=("B Titr", 12, "bold"), command=popup.destroy).pack(side=tk.RIGHT, padx=10)
 
     tree.bind("<Double-1>", on_tree_double_click)
 
     buttons_frame = ttk.Frame(search_win, padding=(10, 10)); buttons_frame.pack(fill=tk.X)
-    tk.Button(buttons_frame, text="جستجو", command=search_action, bg=BLUE_COLOR, fg="white", font=("Segoe UI", 10), activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
-    tk.Button(buttons_frame, text="نمایش همه", command=reset_action, font=("Segoe UI", 10), relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
+    tk.Button(buttons_frame, text="جستجو", command=search_action, bg=BLUE_COLOR, fg="white", font=("B Titr", 12), activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
+    tk.Button(buttons_frame, text="نمایش همه", command=reset_action, font=("B Titr", 12), relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
     reset_action()
 
 # --- Main Application Setup ---
 app = tk.Tk()
-app.title("سامانه مدیریت ورود و خروج (اداره حراست)")
-app.geometry("500x420")
+app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {APP_VERSION}")
+app.geometry("650x600") # Increased main window size for larger fonts
 app.resizable(False, False)
 app.configure(bg=DEFAULT_BG_COLOR)
 try: app.iconbitmap('app_icon.ico')
 except Exception: pass
 
 style = ttk.Style(app); style.theme_use("vista")
-style.configure(".", font=("Segoe UI", 11), background=DEFAULT_BG_COLOR)
+# FONT CHANGE GLOBAL to Size 13
+style.configure(".", font=("B Titr", 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
 frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
-labels = {"نام ملاقات کننده:": 0, "شماره کارت ملی:": 1, "نام ملاقات شونده:": 2, "امور / واحد مربوطه:": 3}
+
+labels = {": نام ملاقات کننده": 0, ": شماره کارت ملی": 1, ": نام ملاقات شونده": 2, ": امور / واحد مربوطه": 3}
 for text, row in labels.items(): ttk.Label(frame, text=text).grid(row=row, column=1, padx=10, pady=10, sticky="e")
 
-entry_visitor_name = ttk.Entry(frame, justify='right', font=("Segoe UI", 11))
-entry_national_id = ttk.Entry(frame, justify='right', font=("Segoe UI", 11))
-entry_employee_to_meet = ttk.Entry(frame, justify='right', font=("Segoe UI", 11))
-combo_department = ttk.Combobox(frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=("Segoe UI", 11))
+# Fonts changed to B Titr Size 13
+entry_visitor_name = ttk.Entry(frame, justify='right', font=("B Titr", 13))
+entry_national_id = ttk.Entry(frame, justify='right', font=("B Titr", 13))
+entry_employee_to_meet = ttk.Entry(frame, justify='right', font=("B Titr", 13))
+combo_department = ttk.Combobox(frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=("B Titr", 13))
 
 entry_visitor_name.grid(row=0, column=0, sticky="ew", padx=10, pady=10); entry_national_id.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
 entry_employee_to_meet.grid(row=2, column=0, sticky="ew", padx=10, pady=10); combo_department.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+
 frame.grid_columnconfigure(0, weight=1)
 
-submit_button = tk.Button(frame, text="ثبت و چاپ رسید", command=submit_visitor, bg=GREEN_COLOR, fg="white", activebackground=GREEN_ACTIVE_COLOR, activeforeground="white", font=("Segoe UI", 12, "bold"), relief="flat", borderwidth=0)
+submit_button = tk.Button(frame, text="ثبت و چاپ رسید", command=submit_visitor, bg=GREEN_COLOR, fg="white", activebackground=GREEN_ACTIVE_COLOR, activeforeground="white", font=("B Titr", 14, "bold"), relief="flat", borderwidth=0)
 submit_button.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=(20, 5), ipady=8)
 
-search_db_button = tk.Button(frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=("Segoe UI", 11), relief="flat", borderwidth=0)
+search_db_button = tk.Button(frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=("B Titr", 13), relief="flat", borderwidth=0)
 search_db_button.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=5, ipady=4)
 
-help_button = tk.Button(frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=("Segoe UI", 11), relief="flat", borderwidth=0)
+help_button = tk.Button(frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=("B Titr", 13), relief="flat", borderwidth=0)
 help_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=(5,0), ipady=4)
+
+# Version Label
+version_label = ttk.Label(frame, text=f"نسخه برنامه : {APP_VERSION}", font=("B Titr", 11), foreground="#808080")
+version_label.grid(row=7, column=0, columnspan=2, pady=(10, 0))
 
 if __name__ == "__main__":
     setup_database()
