@@ -8,7 +8,7 @@ import platform
 import jdatetime
 
 # --- Constants ---
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.2"
 DEPARTMENT_LIST = [
     "اداره حراست", "فناوری و اطلاعات", "نقل و انتقالات",
     "معاونت پژوهش", "معاونت ابتدایی" , "معاونت متوسطه", "دفتر مدیر کل"
@@ -141,10 +141,8 @@ def open_search_window():
     columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time")
     
     # --- CUSTOM STYLE FOR TREEVIEW ---
-    # Changed font to "B Yekan"
-    style.configure("Custom.Treeview", font=("B Yekan", 13), rowheight=35)
+    style.configure("Custom.Treeview", font=("B Nazanin", 13, "bold"), rowheight=35)
     style.configure("Custom.Treeview.Heading", font=("B Titr", 12))
-
 
     tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview")
     headings = {"id": "شماره", "visitor_name": "نام مهمان", "national_id": "کد ملی", "employee_to_meet": "ملاقات شونده", "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج"}
