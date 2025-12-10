@@ -6,6 +6,7 @@ import os
 import tempfile
 import platform
 import jdatetime
+import winreg  # <--- NEW: Required to fix the Header/Footer issue
 
 # --- Constants ---
 APP_VERSION = "1.1.3"
@@ -84,7 +85,31 @@ def submit_visitor():
         messagebox.showinfo("موفق", f"ورود مهمان با شماره {visitor_id} ثبت شد")
     except sqlite3.Error as e: messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
+# --- NEW FUNCTION: REMOVE NOTEPAD HEADERS ---
+def clean_notepad_print_settings():
+    """
+    Modifies the Windows Registry to remove the Header (filename) 
+    and Footer (Page 1) from Notepad printing.
+    """
+    try:
+        # Path to Notepad settings in Registry
+        key_path = r"Software\Microsoft\Notepad"
+        # Open the key for writing
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+        # Set Header and Footer to empty strings
+        winreg.SetValueEx(key, "szHeader", 0, winreg.REG_SZ, "")
+        winreg.SetValueEx(key, "szFooter", 0, winreg.REG_SZ, "")
+        winreg.CloseKey(key)
+    except Exception:
+        # If it fails (e.g., permissions), we just ignore it so the app doesn't crash
+        pass
+
 def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
+    # 1. Clean the headers first
+    if platform.system() == "Windows":
+        clean_notepad_print_settings()
+
+    # 2. Receipt Content (Optimized for thermal paper)
     receipt_content = f"""
 *****************************************
     اداره کل آموزش و پرورش استان همدان       
@@ -128,14 +153,12 @@ def open_search_window():
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
     search_win.title("مشاهده و جستجوی سوابق")
-    # Increased size for larger fonts
     search_win.geometry("1150x700")
     
     # --- Search UI ---
     search_frame = ttk.LabelFrame(search_win, text="فیلترهای جستجو", padding=(10, 10))
     search_frame.pack(fill=tk.X, padx=10, pady=5)
     
-    # Keeping your colons on the left
     ttk.Label(search_frame, text=": نام مهمان").grid(row=0, column=5, sticky=tk.E, padx=(15, 5), pady=5)
     entry_search_name = ttk.Entry(search_frame, justify='right')
     entry_search_name.grid(row=0, column=4, sticky=tk.EW, padx=5, pady=5)
@@ -174,7 +197,6 @@ def open_search_window():
     for col, text in headings.items(): 
         tree.heading(col, text=text)
     
-    # --- CHANGED TO CENTER ALIGNMENT ---
     for col in columns: 
         tree.column(col, anchor=tk.CENTER) # Changed from tk.E to tk.CENTER
         
@@ -183,7 +205,6 @@ def open_search_window():
     
     scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set); scrollbar.pack(side=tk.RIGHT, fill=tk.Y); tree.pack(expand=True, fill=tk.BOTH)
-
 
     # --- Data Functions ---
     def populate_tree(records):
@@ -292,14 +313,13 @@ def open_search_window():
 # --- Main Application Setup ---
 app = tk.Tk()
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {APP_VERSION}")
-app.geometry("650x600") # Increased main window size for larger fonts
+app.geometry("650x600")
 app.resizable(False, False)
 app.configure(bg=DEFAULT_BG_COLOR)
 try: app.iconbitmap('app_icon.ico')
 except Exception: pass
 
 style = ttk.Style(app); style.theme_use("vista")
-# FONT CHANGE GLOBAL to Size 13
 style.configure(".", font=("B Titr", 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
@@ -308,7 +328,6 @@ frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
 labels = {": نام ملاقات کننده": 0, ": شماره کارت ملی": 1, ": نام ملاقات شونده": 2, ": امور / واحد مربوطه": 3}
 for text, row in labels.items(): ttk.Label(frame, text=text).grid(row=row, column=1, padx=10, pady=10, sticky="e")
 
-# Fonts changed to B Titr Size 13
 entry_visitor_name = ttk.Entry(frame, justify='right', font=("B Titr", 13))
 entry_national_id = ttk.Entry(frame, justify='right', font=("B Titr", 13))
 entry_employee_to_meet = ttk.Entry(frame, justify='right', font=("B Titr", 13))
