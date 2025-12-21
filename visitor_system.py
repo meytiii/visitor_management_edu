@@ -77,48 +77,34 @@ def submit_visitor():
         messagebox.showinfo("موفق", f"ورود مهمان با شماره {visitor_id} ثبت شد")
     except sqlite3.Error as e: messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
-# --- UPDATED PRINT FUNCTION ---
 def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
     try:
-        # 1. Setup Printer
         printer_name = win32print.GetDefaultPrinter()
         hDC = win32ui.CreateDC()
         hDC.CreatePrinterDC(printer_name)
         hDC.StartDoc("Visitor Receipt")
         hDC.StartPage()
 
-        # 2. Get Page Width dynamically (in dots/pixels)
-        # This ensures it fits ANY thermal printer (58mm or 80mm) automatically
         page_width = hDC.GetDeviceCaps(win32con.HORZRES)
         
-        # Calculate Positions based on paper size
         x_center = page_width // 2
-        x_right_margin = page_width - 10 # 10px padding from right edge
+        x_right_margin = page_width - 10
         y = 10
-        line_height = 50 # Vertical space between lines
+        line_height = 50
 
-        # 3. Setup Font (B Titr)
-        # Height 45 is standard for thermal printers (approx font size 10-11)
         font_data = {"name": "B Titr", "height": 45, "weight": 700} 
         f = win32ui.CreateFont(font_data)
         hDC.SelectObject(f)
 
-        # 4. Header Content (To be Centered)
         headers = [
             "********************************",
             "اداره کل آموزش و پرورش استان همدان",
             "(اداره حراست)",
-            "********************************"
-        ]
-
-        # 5. Body Content (To be Right Aligned)
-        body_lines = [
-            f"شماره: {visitor_id:06d}",
+            "********************************",
+                        f"شماره: {visitor_id:06d}",
             f"تاریخ: {shamsi_date}",
             f"ساعت ورود: {entry_dt.strftime('%H:%M')}",
-            "",
-            "ساعت خروج: ....................",
-            "",
+            ":ساعت خروج ",
             "--------------------------------",
             f"ملاقات کننده: {name}",
             f"شماره ملی: {nid}",
@@ -127,33 +113,33 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
             "--------------------------------",
             "* حداکثر زمان حضور 2 ساعت می باشد *",
             "",
-            "امضاء نگهبان:",
+            "امضاء نگهبان",
             "",
-            "",
-            "امضاء ملاقات شونده:",
+            "امضاء ملاقات شونده",
             "",
             "********************************"
         ]
 
-        # 6. Print Headers (Mode: Center)
+        body_lines = [
+        ]
+
         hDC.SetTextAlign(win32con.TA_CENTER)
         for line in headers:
             hDC.TextOut(x_center, y, line)
             y += line_height
 
-        # 7. Print Body (Mode: Right Aligned)
         hDC.SetTextAlign(win32con.TA_RIGHT)
         for line in body_lines:
             hDC.TextOut(x_right_margin, y, line)
             y += line_height
 
-        # 8. Finish
         hDC.EndPage()
         hDC.EndDoc()
         hDC.DeleteDC()
 
     except Exception as e:
         messagebox.showerror("خطای پرینت", f"خطا در ارتباط با پرینتر:\n{e}")
+
 
 def clear_fields():
     entry_visitor_name.delete(0, tk.END); entry_national_id.delete(0, tk.END)
