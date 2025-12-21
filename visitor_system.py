@@ -15,7 +15,7 @@ import random
 
 from PIL import Image, ImageTk
 
-APP_VERSION = "1.1.6"
+APP_VERSION = "1.2.1"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
@@ -530,7 +530,7 @@ setup_background(app)
 # --- CENTRAL CARD CONTAINER ---
 # This frame holds all the inputs and sits in the center of the window
 card_frame = tk.Frame(app, bg=CARD_BG_COLOR, bd=2, relief="groove")
-card_frame.place(relx=0.5, rely=0.5, anchor="center", width=550, height=580)
+card_frame.place(relx=0.5, rely=0.5, anchor="center", width=410, height=530)
 
 # Banner / Header (Inside Card)
 header_lbl = tk.Label(card_frame, text="سامانه ثبت ورود و خروج", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
