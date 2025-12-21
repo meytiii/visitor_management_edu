@@ -39,6 +39,8 @@ BLUE_ACTIVE_COLOR = "#007ba7"
 RED_COLOR = "#f44336"
 RED_ACTIVE_COLOR = "#d32f2f"
 DEFAULT_BG_COLOR = "#F0F0F0"
+CARD_BG_COLOR = "#B1E666"
+
 
 # --- Database and Core Logic ---
 def setup_database():
@@ -342,44 +344,29 @@ def clear_fields():
     entry_visitor_name.focus()
 
 # --- UPDATED BACKGROUND FUNCTION (Full Visibility + Auto-Resizing) ---
-def setup_background(window_frame):
-    """
-    Loads 'background.png', sets up dynamic resizing, 
-    and displays the image fully visible (no fading/transparency).
-    """
-    if not os.path.exists("background.png"):
-        return
-
+def setup_background(window_root):
+    if not os.path.exists("background.png"): return
     try:
-        # 1. Load the original image
-        window_frame.original_img = Image.open("background.png")
-
-        # 2. Create the Label that will hold the image
-        bg_label = tk.Label(window_frame)
+        window_root.original_img = Image.open("background.png")
+        # Create label attached to ROOT window (app), not frame
+        bg_label = tk.Label(window_root)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        bg_label.lower() # Send to back
-
-        # 3. Define the resize logic
+        
         def resize_image(event):
-            # Get the new window size
-            new_w, new_h = event.width, event.height
-            
-            # Prevent errors if window is too small during startup
-            if new_w < 50 or new_h < 50: return
+            # Check if the event is coming from the main window itself
+            if event.widget == window_root:
+                new_w, new_h = event.width, event.height
+                if new_w < 50 or new_h < 50: return
+                resized = window_root.original_img.resize((new_w, new_h), Image.BICUBIC)
+                photo = ImageTk.PhotoImage(resized)
+                bg_label.config(image=photo)
+                bg_label.image = photo 
+                
+        window_root.bind('<Configure>', resize_image)
+        # Ensure background stays behind the card
+        bg_label.lower()
+    except Exception as e: print(f"Background Error: {e}")
 
-            # Resize the image directly
-            resized = window_frame.original_img.resize((new_w, new_h), Image.BICUBIC)
-
-            # Convert to Tkinter PhotoImage and display
-            photo = ImageTk.PhotoImage(resized)
-            bg_label.config(image=photo)
-            bg_label.image = photo # Keep reference
-
-        # 4. Bind the resize event
-        window_frame.bind('<Configure>', resize_image)
-
-    except Exception as e:
-        print(f"Background Error: {e}")
 
 
 def open_search_window():
@@ -534,48 +521,58 @@ style = ttk.Style(app); style.theme_use("vista")
 style.configure(".", font=(FONT_MAIN, 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
-frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
+#frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
 
 # --- APPLY BACKGROUND IMAGE ---
 # Ensure 'background.jpg' is in the same folder
-setup_background(frame)
+setup_background(app)
 
-labels = {": نام ملاقات کننده": 0, ": شماره کارت ملی": 1, ": نام ملاقات شونده": 2, ": امور / واحد مربوطه": 3}
-for text, row in labels.items(): ttk.Label(frame, text=text).grid(row=row, column=1, padx=10, pady=10, sticky="e")
+# --- CENTRAL CARD CONTAINER ---
+# This frame holds all the inputs and sits in the center of the window
+card_frame = tk.Frame(app, bg=CARD_BG_COLOR, bd=2, relief="groove")
+card_frame.place(relx=0.5, rely=0.5, anchor="center", width=550, height=580)
 
-entry_visitor_name = ttk.Entry(frame, justify='right', font=(FONT_MAIN, 13))
-entry_national_id = ttk.Entry(frame, justify='right', font=(FONT_MAIN, 13))
-entry_employee_to_meet = ttk.Entry(frame, justify='right', font=(FONT_MAIN, 13))
-combo_department = ttk.Combobox(frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 13))
+# Banner / Header (Inside Card)
+header_lbl = tk.Label(card_frame, text="سامانه ثبت ورود و خروج", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
+header_lbl.grid(row=0, column=0, columnspan=2, pady=(20, 30), sticky="ew")
 
-entry_visitor_name.grid(row=0, column=0, sticky="ew", padx=10, pady=10); entry_national_id.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-entry_employee_to_meet.grid(row=2, column=0, sticky="ew", padx=10, pady=10); combo_department.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+# Inputs (Inside Card)
+labels = {": نام ملاقات کننده": 1, ": شماره کارت ملی": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
+for text, row in labels.items():
+    # Note: bg=CARD_BG_COLOR makes the label look transparent against the card
+    tk.Label(card_frame, text=text, font=(FONT_MAIN, 13), bg=CARD_BG_COLOR, fg="black", anchor="e").grid(row=row, column=1, padx=(10, 30), pady=10, sticky="e")
 
-frame.grid_columnconfigure(0, weight=1)
+entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+entry_employee_to_meet = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 
-submit_button = tk.Button(frame, text="ثبت و چاپ رسید", command=submit_visitor, bg=GREEN_COLOR, fg="white", activebackground=GREEN_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 14, "bold"), relief="flat", borderwidth=0)
-submit_button.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=(20, 5), ipady=8)
+entry_visitor_name.grid(row=1, column=0, sticky="ew", padx=(30, 5), pady=10)
+entry_national_id.grid(row=2, column=0, sticky="ew", padx=(30, 5), pady=10)
+entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(30, 5), pady=10)
+combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)
 
-search_db_button = tk.Button(frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 13), relief="flat", borderwidth=0)
-search_db_button.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=5, ipady=4)
+card_frame.grid_columnconfigure(0, weight=1)
 
-help_button = tk.Button(frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=(FONT_MAIN, 13), relief="flat", borderwidth=0)
-help_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=(5,0), ipady=4)
+# Buttons (Inside Card, below inputs)
+btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
+btn_frame.grid(row=5, column=0, columnspan=2, pady=(30, 20), sticky="ew")
 
-version_label = ttk.Label(frame, text=f"نسخه برنامه : {APP_VERSION}", font=(FONT_MAIN, 11), foreground="#808080")
-version_label.grid(row=7, column=0, columnspan=2, pady=(10, 0))
+submit_button = tk.Button(btn_frame, text="ثبت و چاپ رسید", command=submit_visitor, bg=GREEN_COLOR, fg="white", activebackground=GREEN_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 13, "bold"), relief="flat", borderwidth=0)
+submit_button.pack(fill="x", padx=30, pady=5)
 
-# --- MENU BAR (TOOLBAR) ---
+search_db_button = tk.Button(btn_frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
+search_db_button.pack(fill="x", padx=30, pady=5)
+
+help_button = tk.Button(btn_frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
+help_button.pack(fill="x", padx=30, pady=5)
+
+# Menu Bar
 menubar = tk.Menu(app)
-# Create a menu named "منو" (Menu) or "ابزارها" (Tools)
 tools_menu = tk.Menu(menubar, tearoff=0)
-# Change command=open_developer_mode to command=ask_dev_password
 tools_menu.add_command(label="Developer mode", command=ask_dev_password)
-# Add it to the bar
 menubar.add_cascade(label="امکانات", menu=tools_menu)
-# Attach the menu to the main window
 app.config(menu=menubar)
-
 
 if __name__ == "__main__":
     setup_database()
