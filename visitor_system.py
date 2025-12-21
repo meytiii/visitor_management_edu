@@ -3,15 +3,20 @@ import tkinter as tk
 from tkinter import messagebox, ttk, font
 from datetime import datetime
 import os
+import tempfile
+import platform
 import jdatetime
 
-# --- NEW IMPORTS FOR DIRECT PRINTING ---
+# --- PRINTING LIBRARIES ---
 import win32ui
 import win32print
 import win32con
 
+# --- IMAGE LIBRARY (For Background) ---
+from PIL import Image, ImageTk
+
 # --- Constants ---
-APP_VERSION = "1.1.4" # Updated Version
+APP_VERSION = "1.1.4"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
@@ -33,7 +38,7 @@ BLUE_COLOR = "#008CBA"
 BLUE_ACTIVE_COLOR = "#007ba7"
 RED_COLOR = "#f44336"
 RED_ACTIVE_COLOR = "#d32f2f"
-DEFAULT_BG_COLOR = "#F0F0F0"
+DEFAULT_BG_COLOR = "#F0F0F0" # Light Gray
 
 # --- Database and Core Logic ---
 def setup_database():
@@ -72,10 +77,8 @@ def submit_visitor():
         messagebox.showinfo("موفق", f"ورود مهمان با شماره {visitor_id} ثبت شد")
     except sqlite3.Error as e: messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
-# --- NEW DIRECT PRINTING FUNCTION ---
 def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
     try:
-        # 1. Prepare the text content (Standard Python String)
         receipt_text = f"""
 **************************************
  اداره کل آموزش و پرورش استان همدان
@@ -102,46 +105,82 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
 
 **************************************
 """
-        # 2. Get Default Printer Name
         printer_name = win32print.GetDefaultPrinter()
-
-        # 3. Create a Device Context (DC) to draw on the printer
         hDC = win32ui.CreateDC()
         hDC.CreatePrinterDC(printer_name)
-        
-        # 4. Start the Document
         hDC.StartDoc("Visitor Receipt")
         hDC.StartPage()
-
-        # 5. Create a Font (Using B Titr or Tahoma if missing)
-        # Height 40 is roughly size 10-12 in printing points depending on DPI
+        
+        # Font Selection logic for Printing
+        # We try to use a standard readable font for thermal printers
         font_data = {"name": "B Titr", "height": 45, "weight": 400} 
         f = win32ui.CreateFont(font_data)
         hDC.SelectObject(f)
 
-        # 6. Draw the text line by line
-        # We need to split the string because GDI prints one line at specific X,Y coordinates
-        x = 50  # Left margin
-        y = 50  # Top margin
-        line_height = 50 # Space between lines
-
+        x = 50; y = 50; line_height = 50
         for line in receipt_text.split("\n"):
-            # Draw the text at position (x, y)
             hDC.TextOut(x, y, line)
             y += line_height
 
-        # 7. Finish
         hDC.EndPage()
         hDC.EndDoc()
         hDC.DeleteDC()
 
     except Exception as e:
-        messagebox.showerror("خطای پرینت", f"خطا در ارتباط با پرینتر:\n{e}\n\nلطفا مطمئن شوید کتابخانه pywin32 نصب شده است.")
+        messagebox.showerror("خطای پرینت", f"خطا در ارتباط با پرینتر:\n{e}")
 
 def clear_fields():
     entry_visitor_name.delete(0, tk.END); entry_national_id.delete(0, tk.END)
     entry_employee_to_meet.delete(0, tk.END); combo_department.set("")
     entry_visitor_name.focus()
+
+# --- BACKGROUND IMAGE FUNCTION ---
+def setup_background(window_frame):
+    """
+    Loads 'background.jpg', resizes it to fit the window,
+    and blends it with the background color to create a 'faded' effect.
+    """
+    try:
+        if not os.path.exists("background.jpg"):
+            return # Do nothing if file is missing
+
+        # 1. Load the image
+        original_img = Image.open("background.jpg")
+        
+        # 2. Resize to typical window size (e.g., 650x600)
+        # Note: Dynamic resizing on window resize is complex in Tkinter,
+        # so we stick to a fixed size close to the window geometry.
+        target_size = (650, 600) 
+        resized_img = original_img.resize(target_size, Image.LANCZOS)
+
+        # 3. Create a solid color layer (The gray background)
+        if resized_img.mode != 'RGBA':
+            resized_img = resized_img.convert('RGBA')
+            
+        # Create a solid gray image of the same size
+        # #F0F0F0 is roughly (240, 240, 240)
+        background_layer = Image.new('RGBA', target_size, (240, 240, 240, 255))
+        
+        # 4. Blend the two (0.3 means keep 30% of image, 70% of background)
+        # Adjust 'alpha' to make it more or less visible.
+        # 0.1 = Very faint, 0.9 = Almost original
+        final_img = Image.blend(background_layer, resized_img, alpha=0.15) 
+
+        # 5. Convert to Tkinter Format
+        bg_photo = ImageTk.PhotoImage(final_img)
+
+        # 6. Create Label and place it BEHIND everything
+        bg_label = tk.Label(window_frame, image=bg_photo)
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        # Keep a reference so it doesn't get garbage collected
+        window_frame.bg_photo = bg_photo 
+        
+        # Send it to the back
+        bg_label.lower() 
+
+    except Exception as e:
+        print(f"Background Error: {e}")
 
 def open_search_window():
     search_win = tk.Toplevel(app)
@@ -296,6 +335,10 @@ style.configure(".", font=(FONT_MAIN, 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
 frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
+
+# --- APPLY BACKGROUND IMAGE ---
+# Ensure 'background.jpg' is in the same folder
+setup_background(frame)
 
 labels = {": نام ملاقات کننده": 0, ": شماره کارت ملی": 1, ": نام ملاقات شونده": 2, ": امور / واحد مربوطه": 3}
 for text, row in labels.items(): ttk.Label(frame, text=text).grid(row=row, column=1, padx=10, pady=10, sticky="e")
