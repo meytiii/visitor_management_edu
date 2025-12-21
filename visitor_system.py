@@ -59,63 +59,65 @@ def show_help_popup():
     messagebox.showinfo("راهنما", help_text)
 
 # --- DEVELOPER MODE FUNCTIONS ---
+def delete_all_records():
+    """Deletes ALL data from the database and resets the ID counter."""
+    # Safety Check
+    if not messagebox.askyesno("Danger Zone", "Are you sure you want to DELETE ALL records?\n\nThis cannot be undone!"):
+        return
+
+    try:
+        conn = sqlite3.connect('visitor_log.db')
+        cursor = conn.cursor()
+        
+        # 1. Delete all rows
+        cursor.execute("DELETE FROM visitors")
+        
+        # 2. Reset the Auto-Increment ID counter so the next visitor starts at 1
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='visitors'")
+        
+        conn.commit()
+        conn.close()
+        
+        messagebox.showinfo("Developer Mode", "Database has been completely cleared.")
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to delete data: {e}")
 
 def add_dummy_data():
     """Generates 100 random records and inserts them into the database."""
     try:
-        # Lists for random generation
         first_names = ["علی", "محمد", "رضا", "حسین", "محسن", "احمد", "مهدی", "سارا", "مریم", "زهرا", "فاطمه", "نرگس", "نیما", "کاوه", "امید", "پیمان", "سعید"]
         last_names = ["محمدی", "حسینی", "رضایی", "کریمی", "احمدی", "موسوی", "جعفری", "صادقی", "رحیمی", "عباسی", "باقری", "زاهدی", "میرزایی", "غفاری"]
         
         dummy_records = []
         
         for _ in range(100):
-            # 1. Random Name
             full_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-            
-            # 2. Random National ID (10 digits)
             nid = str(random.randint(1000000000, 9999999999))
-            
-            # 3. Random Date (1403 or 1404)
             year = random.choice([1403, 1404])
             month = random.randint(1, 12)
-            # Handle days for months to avoid invalid dates (like 31st of Esfand)
             if month <= 6: day = random.randint(1, 31)
             elif month <= 11: day = random.randint(1, 30)
             else: day = random.randint(1, 29)
             
             shamsi_date = f"{year}/{month:02d}/{day:02d}"
-            
-            # 4. Random Time (08:00 - 14:00)
             hour = random.randint(8, 13) 
             minute = random.randint(0, 59)
             second = random.randint(0, 59)
             time_str = f"{hour:02d}:{minute:02d}:{second:02d}"
             
-            # 5. Convert to Gregorian for 'entry_time' column (required for sorting/display logic)
-            # We use jdatetime to get the correct corresponding gregorian date
             g_date = jdatetime.date(year, month, day).togregorian()
             entry_time_gregorian = f"{g_date.year}-{g_date.month:02d}-{g_date.day:02d} {time_str}"
             
-            # 6. Random Department
             dept = random.choice(DEPARTMENT_LIST)
             
-            # Store in list first
             dummy_records.append({
-                "visitor_name": full_name,
-                "national_id": nid,
-                "employee_to_meet": "-",
-                "department": dept,
-                "entry_time": entry_time_gregorian,
-                "shamsi_date": shamsi_date
+                "visitor_name": full_name, "national_id": nid, "employee_to_meet": "-",
+                "department": dept, "entry_time": entry_time_gregorian, "shamsi_date": shamsi_date
             })
             
-        # 7. Sort by Date Ascending before insertion
-        # This ensures that when we insert them, the later dates have higher IDs,
-        # preserving the "Newest at Top" view in the main app.
         dummy_records.sort(key=lambda x: x['entry_time'])
 
-        # 8. Batch Insert
         conn = sqlite3.connect('visitor_log.db')
         cursor = conn.cursor()
         for r in dummy_records:
@@ -126,8 +128,7 @@ def add_dummy_data():
         
         conn.commit()
         conn.close()
-        
-        messagebox.showinfo("Developer Mode", "100 Random Records Added Successfully!\n\nCheck 'Search Records' to see them.")
+        messagebox.showinfo("Developer Mode", "100 Random Records Added Successfully!")
 
     except Exception as e:
         messagebox.showerror("Error", f"Failed to generate data: {e}")
@@ -135,23 +136,26 @@ def add_dummy_data():
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("Developer Mode")
-    dev_win.geometry("400x300")
+    dev_win.geometry("400x350")
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     
-    # Set Background to Blue
     dev_win.configure(bg=BLUE_COLOR)
     
-    # Add Title
     tk.Label(dev_win, text="Developer Tools", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
-    # Add 'Generate Records' Button
-    # Using a slightly darker blue/white style for contrast
+    # Add Records Button (White)
     btn_add = tk.Button(dev_win, text="Add 100 Random Records", command=add_dummy_data, 
-                        bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=10)
-    btn_add.pack(expand=True)
+                        bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
+    btn_add.pack(pady=10)
+
+    # Delete DB Button (Red)
+    btn_del = tk.Button(dev_win, text="Delete DB (Clear All)", command=delete_all_records, 
+                        bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
+    btn_del.pack(pady=10)
     
-    tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(pady=10)
+    tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
+
 
 
 
