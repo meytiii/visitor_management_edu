@@ -7,15 +7,12 @@ import tempfile
 import platform
 import jdatetime
 
-# --- PRINTING LIBRARIES ---
 import win32ui
 import win32print
 import win32con
 
-# --- IMAGE LIBRARY (For Background) ---
 from PIL import Image, ImageTk
 
-# --- Constants ---
 APP_VERSION = "1.1.5"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
@@ -38,7 +35,7 @@ BLUE_COLOR = "#008CBA"
 BLUE_ACTIVE_COLOR = "#007ba7"
 RED_COLOR = "#f44336"
 RED_ACTIVE_COLOR = "#d32f2f"
-DEFAULT_BG_COLOR = "#F0F0F0" # Light Gray
+DEFAULT_BG_COLOR = "#F0F0F0"
 
 # --- Database and Core Logic ---
 def setup_database():
@@ -154,7 +151,7 @@ def setup_background(window_frame):
     """
     try:
         if not os.path.exists("background.jpg"):
-            return # Do nothing if file is missing
+            return
 
         # 1. Load the image
         original_img = Image.open("background.jpg")
