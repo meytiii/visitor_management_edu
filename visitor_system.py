@@ -143,46 +143,42 @@ def clear_fields():
     entry_employee_to_meet.delete(0, tk.END); combo_department.set("")
     entry_visitor_name.focus()
 
-# --- BACKGROUND IMAGE FUNCTION ---
+# --- UPDATED BACKGROUND FUNCTION (Full Visibility + Auto-Resizing) ---
 def setup_background(window_frame):
     """
-    Loads 'background.png', resizes it to fit the window,
-    and blends it with the background color to create a 'faded' effect.
+    Loads 'background.png', sets up dynamic resizing, 
+    and displays the image fully visible (no fading/transparency).
     """
+    if not os.path.exists("background.png"):
+        return
+
     try:
-        # Changed file extension to .png
-        if not os.path.exists("background.png"):
-            return
+        # 1. Load the original image
+        window_frame.original_img = Image.open("background.png")
 
-        # 1. Load the image
-        original_img = Image.open("background.png")
-        
-        # 2. Resize to fit the window size
-        target_size = (650, 600) 
-        resized_img = original_img.resize(target_size, Image.LANCZOS)
-
-        # 3. Handle Transparency (Important for PNGs)
-        if resized_img.mode != 'RGBA':
-            resized_img = resized_img.convert('RGBA')
-            
-        # Create a solid gray background layer
-        background_layer = Image.new('RGBA', target_size, (240, 240, 240, 255))
-        
-        # 4. Blend the two (0.15 = 15% visibility)
-        final_img = Image.blend(background_layer, resized_img, alpha=0.15) 
-
-        # 5. Convert to Tkinter Format
-        bg_photo = ImageTk.PhotoImage(final_img)
-
-        # 6. Create Label and place it BEHIND everything
-        bg_label = tk.Label(window_frame, image=bg_photo)
+        # 2. Create the Label that will hold the image
+        bg_label = tk.Label(window_frame)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        
-        # Keep a reference
-        window_frame.bg_photo = bg_photo 
-        
-        # Send it to the back
-        bg_label.lower() 
+        bg_label.lower() # Send to back
+
+        # 3. Define the resize logic
+        def resize_image(event):
+            # Get the new window size
+            new_w, new_h = event.width, event.height
+            
+            # Prevent errors if window is too small during startup
+            if new_w < 50 or new_h < 50: return
+
+            # Resize the image directly
+            resized = window_frame.original_img.resize((new_w, new_h), Image.BICUBIC)
+
+            # Convert to Tkinter PhotoImage and display
+            photo = ImageTk.PhotoImage(resized)
+            bg_label.config(image=photo)
+            bg_label.image = photo # Keep reference
+
+        # 4. Bind the resize event
+        window_frame.bind('<Configure>', resize_image)
 
     except Exception as e:
         print(f"Background Error: {e}")
