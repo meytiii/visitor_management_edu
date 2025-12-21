@@ -146,33 +146,29 @@ def clear_fields():
 # --- BACKGROUND IMAGE FUNCTION ---
 def setup_background(window_frame):
     """
-    Loads 'background.jpg', resizes it to fit the window,
+    Loads 'background.png', resizes it to fit the window,
     and blends it with the background color to create a 'faded' effect.
     """
     try:
-        if not os.path.exists("background.jpg"):
+        # Changed file extension to .png
+        if not os.path.exists("background.png"):
             return
 
         # 1. Load the image
-        original_img = Image.open("background.jpg")
+        original_img = Image.open("background.png")
         
-        # 2. Resize to typical window size (e.g., 650x600)
-        # Note: Dynamic resizing on window resize is complex in Tkinter,
-        # so we stick to a fixed size close to the window geometry.
+        # 2. Resize to fit the window size
         target_size = (650, 600) 
         resized_img = original_img.resize(target_size, Image.LANCZOS)
 
-        # 3. Create a solid color layer (The gray background)
+        # 3. Handle Transparency (Important for PNGs)
         if resized_img.mode != 'RGBA':
             resized_img = resized_img.convert('RGBA')
             
-        # Create a solid gray image of the same size
-        # #F0F0F0 is roughly (240, 240, 240)
+        # Create a solid gray background layer
         background_layer = Image.new('RGBA', target_size, (240, 240, 240, 255))
         
-        # 4. Blend the two (0.3 means keep 30% of image, 70% of background)
-        # Adjust 'alpha' to make it more or less visible.
-        # 0.1 = Very faint, 0.9 = Almost original
+        # 4. Blend the two (0.15 = 15% visibility)
         final_img = Image.blend(background_layer, resized_img, alpha=0.15) 
 
         # 5. Convert to Tkinter Format
@@ -182,7 +178,7 @@ def setup_background(window_frame):
         bg_label = tk.Label(window_frame, image=bg_photo)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        # Keep a reference so it doesn't get garbage collected
+        # Keep a reference
         window_frame.bg_photo = bg_photo 
         
         # Send it to the back
@@ -190,6 +186,7 @@ def setup_background(window_frame):
 
     except Exception as e:
         print(f"Background Error: {e}")
+
 
 def open_search_window():
     search_win = tk.Toplevel(app)
