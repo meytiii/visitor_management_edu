@@ -44,8 +44,13 @@ DEFAULT_BG_COLOR = "#F0F0F0"
 def setup_database():
     conn = sqlite3.connect('visitor_log.db')
     cursor = conn.cursor()
-    try: cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
-    except sqlite3.OperationalError: pass
+    
+    # 1. Visitor Table logic
+    try: 
+        cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
+    except sqlite3.OperationalError: 
+        pass
+        
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS visitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_name TEXT NOT NULL,
@@ -53,9 +58,6 @@ def setup_database():
             department TEXT NOT NULL, entry_time TEXT NOT NULL,
             shamsi_date TEXT, exit_time TEXT
         )''')
-
-
-        # ... existing visitor table code ...
     
     # 2. Config Table (For Password)
     cursor.execute('''
@@ -63,8 +65,10 @@ def setup_database():
             key TEXT PRIMARY KEY,
             value TEXT
         )''')
-    conn.commit(); conn.close()
-    # ... commit and close ...
+    
+    conn.commit()
+    conn.close()
+
 
 def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {APP_VERSION}"
