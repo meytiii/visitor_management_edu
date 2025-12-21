@@ -16,7 +16,7 @@ import win32con
 from PIL import Image, ImageTk
 
 # --- Constants ---
-APP_VERSION = "1.1.4"
+APP_VERSION = "1.1.5"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
