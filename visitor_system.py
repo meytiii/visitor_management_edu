@@ -13,7 +13,7 @@ import win32con
 
 from PIL import Image, ImageTk
 
-APP_VERSION = "1.1.5"
+APP_VERSION = "1.1.6"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
@@ -55,6 +55,14 @@ def setup_database():
 def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
+
+def open_developer_mode():
+    dev_win = tk.Toplevel(app)
+    dev_win.title("Developer Mode")
+    dev_win.geometry("400x300")
+    try: dev_win.iconbitmap('app_icon.ico')
+    except: pass
+
 
 def submit_visitor():
     visitor_name, national_id, employee_to_meet, department = (entry_visitor_name.get(), entry_national_id.get(), entry_employee_to_meet.get(), combo_department.get())
@@ -366,6 +374,17 @@ help_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=(5,0)
 
 version_label = ttk.Label(frame, text=f"نسخه برنامه : {APP_VERSION}", font=(FONT_MAIN, 11), foreground="#808080")
 version_label.grid(row=7, column=0, columnspan=2, pady=(10, 0))
+
+# --- MENU BAR (TOOLBAR) ---
+menubar = tk.Menu(app)
+# Create a menu named "منو" (Menu) or "ابزارها" (Tools)
+tools_menu = tk.Menu(menubar, tearoff=0)
+tools_menu.add_command(label="Developer mode", command=open_developer_mode)
+# Add it to the bar
+menubar.add_cascade(label="امکانات", menu=tools_menu)
+# Attach the menu to the main window
+app.config(menu=menubar)
+
 
 if __name__ == "__main__":
     setup_database()
