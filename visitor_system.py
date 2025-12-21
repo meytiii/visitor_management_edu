@@ -20,7 +20,7 @@ DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
     "اداره حراست", "اداره سنجش", "اداره خدمات و پشتیبانی",
-    "امور اداری", "اداره فن آوری", "اداره امور مالی و حسابداری",
+    "امور اداری", "اداره فناوری اطلاعات", "اداره امور مالی و حسابداری",
     "اداره بودجه", "اداره تعاون و رفاه", "اداره استعداد های درخشان",
     "اداره امور شاهد", "اداره بازرسی", "اداره روابط عمومی",
     "اداره حقوقی", "اداره مشارکت ها", "اداره آموزش استثنائی",
@@ -30,6 +30,7 @@ PERSIAN_MONTHS = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
+DEFAULT_DEV_PASSWORD = "herasat_edu@!" 
 
 GREEN_COLOR = "#4CAF50"
 GREEN_ACTIVE_COLOR = "#45a049"
@@ -52,11 +53,97 @@ def setup_database():
             department TEXT NOT NULL, entry_time TEXT NOT NULL,
             shamsi_date TEXT, exit_time TEXT
         )''')
+
+
+        # ... existing visitor table code ...
+    
+    # 2. Config Table (For Password)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS config (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )''')
     conn.commit(); conn.close()
+    # ... commit and close ...
 
 def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
+
+def get_current_password():
+    try:
+        conn = sqlite3.connect('visitor_log.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM config WHERE key='dev_password'")
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else DEFAULT_DEV_PASSWORD
+    except: return DEFAULT_DEV_PASSWORD
+
+def ask_dev_password():
+    pwd_win = tk.Toplevel(app)
+    pwd_win.title("Security Check"); pwd_win.geometry("300x180")
+    try: pwd_win.iconbitmap('app_icon.ico')
+    except: pass
+    pwd_win.configure(bg=BLUE_COLOR)
+    
+    x = app.winfo_x() + (app.winfo_width() // 2) - 150
+    y = app.winfo_y() + (app.winfo_height() // 2) - 90
+    pwd_win.geometry(f"+{x}+{y}")
+
+    tk.Label(pwd_win, text=":رمز عبور را وارد کنید", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(pady=15)
+    ent_pass = tk.Entry(pwd_win, show="●", justify="center", font=(FONT_MAIN, 11))
+    ent_pass.pack(pady=5); ent_pass.focus()
+
+    def check():
+        if ent_pass.get() == get_current_password():
+            pwd_win.destroy()
+            open_developer_mode()
+        else:
+            messagebox.showerror("Access Denied", "رمز عبور اشتباه است", parent=pwd_win)
+            ent_pass.delete(0, tk.END)
+
+    tk.Button(pwd_win, text="ورود", command=check, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 10, "bold"), width=10).pack(pady=15)
+    pwd_win.bind('<Return>', lambda e: check())
+
+
+def set_new_password(new_pass):
+    conn = sqlite3.connect('visitor_log.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('dev_password', ?)", (new_pass,))
+    conn.commit(); conn.close()
+
+def change_password_ui(parent_win):
+    cp_win = tk.Toplevel(parent_win)
+    cp_win.title("Change Password"); cp_win.geometry("350x300")
+    try: cp_win.iconbitmap('app_icon.ico')
+    except: pass
+    cp_win.configure(bg=BLUE_COLOR)
+    
+    def create_field(label_text):
+        tk.Label(cp_win, text=label_text, bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 10)).pack(pady=(10, 0))
+        entry = tk.Entry(cp_win, show="●", justify="center", font=(FONT_MAIN, 10))
+        entry.pack(pady=5)
+        return entry
+
+    ent_old = create_field("رمز عبور فعلی:")
+    ent_new = create_field("رمز عبور جدید:")
+    ent_confirm = create_field("تکرار رمز عبور جدید:")
+
+    def do_change():
+        if ent_old.get() != get_current_password():
+            messagebox.showerror("Error", "رمز عبور فعلی اشتباه است", parent=cp_win); return
+        if ent_new.get() != ent_confirm.get():
+            messagebox.showerror("Error", "تکرار رمز عبور مطابقت ندارد", parent=cp_win); return
+        if not ent_new.get():
+            messagebox.showerror("Error", "رمز عبور نمی‌تواند خالی باشد", parent=cp_win); return
+            
+        set_new_password(ent_new.get())
+        messagebox.showinfo("Success", "رمز عبور با موفقیت تغییر یافت", parent=cp_win)
+        cp_win.destroy()
+
+    tk.Button(cp_win, text="تغییر رمز", command=do_change, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 11, "bold")).pack(pady=20)
+
 
 # --- DEVELOPER MODE FUNCTIONS ---
 def delete_all_records():
@@ -154,6 +241,10 @@ def open_developer_mode():
                         bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
     btn_del.pack(pady=10)
     
+    # Change Password Button
+    btn_pass = tk.Button(dev_win, text="Change Password", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
+    btn_pass.pack(pady=10)
+
     tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 
@@ -474,7 +565,8 @@ version_label.grid(row=7, column=0, columnspan=2, pady=(10, 0))
 menubar = tk.Menu(app)
 # Create a menu named "منو" (Menu) or "ابزارها" (Tools)
 tools_menu = tk.Menu(menubar, tearoff=0)
-tools_menu.add_command(label="Developer mode", command=open_developer_mode)
+# Change command=open_developer_mode to command=ask_dev_password
+tools_menu.add_command(label="Developer mode", command=ask_dev_password)
 # Add it to the bar
 menubar.add_cascade(label="امکانات", menu=tools_menu)
 # Attach the menu to the main window
