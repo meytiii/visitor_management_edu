@@ -285,9 +285,9 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
         page_width = hDC.GetDeviceCaps(win32con.HORZRES)
         
         x_center = page_width // 2
-        x_right_margin = page_width - 10
+        x_right_margin = page_width - 30
         y = 10
-        line_height = 50
+        line_height = 45
 
         font_data = {"name": "B Titr", "height": 45, "weight": 700} 
         f = win32ui.CreateFont(font_data)
@@ -305,15 +305,13 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
             "--------------------------------",
             f"ملاقات کننده: {name}",
             f"شماره ملی: {nid}",
+            f"معاونت/اداره: {dept}",
             f"ملاقات شونده: {emp}",
-            f"واحد: {dept}",
-            "--------------------------------",
-            "* حداکثر زمان حضور 2 ساعت می باشد *",
-            "",
-            "امضاء نگهبان",
-            "",
             "امضاء ملاقات شونده",
             "",
+            "",
+            "* حداکثر زمان حضور 2 ساعت می باشد *",
+            "حفاظت فیزیکی",
             "********************************"
         ]
 
