@@ -15,7 +15,7 @@ import random
 
 from PIL import Image, ImageTk
 
-APP_VERSION = "1.2.6"
+APP_VERSION = "1.2.7"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
