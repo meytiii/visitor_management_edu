@@ -226,31 +226,114 @@ def add_dummy_data():
     except Exception as e:
         messagebox.showerror("Error", f"Failed to generate data: {e}")
 
+def show_daily_stats_ui(parent_win):
+    """Popup to show daily entry/exit counts."""
+    stats_win = tk.Toplevel(parent_win)
+    stats_win.title("آمار تردد")
+    stats_win.geometry("400x400")
+    try: stats_win.iconbitmap('app_icon.ico')
+    except: pass
+    stats_win.configure(bg=BLUE_COLOR)
+    
+    tk.Label(stats_win, text=":تاریخ مورد نظر را وارد کنید", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12, "bold")).pack(pady=(20, 10))
+    
+    # Date Input Frame (Year / Month / Day)
+    date_frame = tk.Frame(stats_win, bg=BLUE_COLOR)
+    date_frame.pack(pady=5)
+    
+    # Day
+    ent_day = tk.Entry(date_frame, justify='center', width=5, font=(FONT_MAIN, 11))
+    ent_day.pack(side=tk.RIGHT, padx=2)
+    tk.Label(date_frame, text="/", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(side=tk.RIGHT)
+    
+    # Month
+    ent_month = tk.Entry(date_frame, justify='center', width=5, font=(FONT_MAIN, 11))
+    ent_month.pack(side=tk.RIGHT, padx=2)
+    tk.Label(date_frame, text="/", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(side=tk.RIGHT)
+    
+    # Year
+    ent_year = tk.Entry(date_frame, justify='center', width=7, font=(FONT_MAIN, 11))
+    ent_year.pack(side=tk.RIGHT, padx=2)
+
+    # Label to show results
+    result_lbl = tk.Label(stats_win, text="", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12), justify="right")
+    result_lbl.pack(pady=20)
+
+    def calculate(target_date_str=None):
+        # If no specific date passed (like from 'Today' button), build it from fields
+        if not target_date_str:
+            y, m, d = ent_year.get(), ent_month.get(), ent_day.get()
+            if not (y and m and d):
+                messagebox.showwarning("خطا", "لطفاً سال، ماه و روز را کامل وارد کنید", parent=stats_win)
+                return
+            # Pad with zeros (e.g., 5 -> 05) to match DB format
+            target_date_str = f"{y}/{m.zfill(2)}/{d.zfill(2)}"
+        
+        try:
+            conn = sqlite3.connect('visitor_log.db')
+            cursor = conn.cursor()
+            
+            # 1. Total Registered
+            cursor.execute("SELECT COUNT(*) FROM visitors WHERE shamsi_date = ?", (target_date_str,))
+            total = cursor.fetchone()[0]
+            
+            # 2. No Exit Time (NULL or Empty)
+            cursor.execute("SELECT COUNT(*) FROM visitors WHERE shamsi_date = ? AND (exit_time IS NULL OR exit_time = '')", (target_date_str,))
+            no_exit = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            # Update Label
+            display_text = (
+                f"تاریخ: {target_date_str}\n\n"
+                f"تعداد کل ثبت شده: {total}\n"
+                f"تعداد ثبت شده بدون ساعت خروجی: {no_exit}"
+            )
+            result_lbl.config(text=display_text)
+            
+        except Exception as e:
+            messagebox.showerror("Error", str(e), parent=stats_win)
+
+    def set_today():
+        # Get today's Jalali date
+        now_j = jdatetime.date.fromgregorian(date=datetime.now().date())
+        # Fill fields
+        ent_year.delete(0, tk.END); ent_year.insert(0, str(now_j.year))
+        ent_month.delete(0, tk.END); ent_month.insert(0, str(now_j.month))
+        ent_day.delete(0, tk.END); ent_day.insert(0, str(now_j.day))
+        # Auto calculate
+        calculate(now_j.strftime("%Y/%m/%d"))
+
+    # Buttons Frame
+    btn_frame = tk.Frame(stats_win, bg=BLUE_COLOR)
+    btn_frame.pack(pady=10)
+    
+    tk.Button(btn_frame, text="امروز", command=set_today, bg="#FF9800", fg="white", font=(FONT_MAIN, 11, "bold"), relief="flat", width=10).pack(side=tk.LEFT, padx=10)
+    tk.Button(btn_frame, text="محاسبه", command=lambda: calculate(), bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 11, "bold"), relief="flat", width=10).pack(side=tk.LEFT, padx=10)
+
+
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("Developer Mode")
-    dev_win.geometry("400x350")
+    dev_win.geometry("400x500") # Increased height slightly
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
-    
     dev_win.configure(bg=BLUE_COLOR)
     
     tk.Label(dev_win, text="Developer Tools", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
-    # Add Records Button (White)
-    btn_add = tk.Button(dev_win, text="Add 100 Random Records", command=add_dummy_data, 
-                        bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
-    btn_add.pack(pady=10)
-
-    # Delete DB Button (Red)
-    btn_del = tk.Button(dev_win, text="Delete DB (Clear All)", command=delete_all_records, 
-                        bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
-    btn_del.pack(pady=10)
+    # 1. Add Dummy Data
+    tk.Button(dev_win, text="Add 100 Random Records", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # Change Password Button
-    btn_pass = tk.Button(dev_win, text="Change Password", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5)
-    btn_pass.pack(pady=10)
-
+    # 2. Delete DB
+    tk.Button(dev_win, text="Delete DB (Clear All)", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    
+    # 3. Change Password
+    tk.Button(dev_win, text="Change Password", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    
+    # 4. NEW: Stats Button
+    tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    
     tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 
