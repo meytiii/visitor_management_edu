@@ -532,12 +532,14 @@ def open_search_window():
         entry_search_name.delete(0, tk.END); entry_search_nid.delete(0, tk.END)
         combo_year.set(""); combo_month.set(""); combo_day.set(""); combo_search_dept.set(""); fetch_and_display_records({})
 
+    # --- POPUP LOGIC FOR EXIT TIME ---
     def on_tree_double_click(event):
         selected_item = tree.selection()
         if not selected_item: return
         item_values = tree.item(selected_item, "values")
         visitor_id = item_values[0]
         visitor_name = item_values[1]
+        entry_shamsi_date = item_values[6] # Get the recorded entry date
         existing_exit_time = item_values[7]
 
         if existing_exit_time and existing_exit_time.strip():
@@ -556,6 +558,33 @@ def open_search_window():
 
         tk.Label(popup, text=f":ثبت خروج برای\n{visitor_name}", font=(FONT_MAIN, 13, "bold")).pack(pady=10)
         tk.Label(popup, text="ساعت خروج برای مهمان انتخاب شده ثبت شود؟", font=(FONT_MAIN, 12)).pack(pady=5)
+
+        def confirm_exit():
+            # --- DATE VALIDATION CHECK ---
+            current_shamsi_date = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+            
+            if entry_shamsi_date != current_shamsi_date:
+                messagebox.showerror("خطا", ".ثبت ساعت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup)
+                return
+            # -----------------------------
+
+            exit_time_str = datetime.now().strftime("%H:%M")
+            try:
+                conn = sqlite3.connect('visitor_log.db')
+                cursor = conn.cursor()
+                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
+                conn.commit(); conn.close()
+                popup.destroy()
+                search_action()
+                messagebox.showinfo("موفق", "ساعت خروج با موفقیت ثبت شد", parent=search_win)
+            except Exception as e:
+                messagebox.showerror("خطا", f"خطا در ثبت ساعت خروج: {e}", parent=search_win)
+
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(pady=20)
+        tk.Button(btn_frame, text="بله", bg=GREEN_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=confirm_exit).pack(side=tk.RIGHT, padx=10)
+        tk.Button(btn_frame, text="خیر", bg=RED_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=popup.destroy).pack(side=tk.RIGHT, padx=10)
+
 
         def confirm_exit():
             exit_time_str = datetime.now().strftime("%H:%M")
@@ -584,7 +613,7 @@ def open_search_window():
 # --- Main Application Setup ---
 app = tk.Tk()
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {APP_VERSION}")
-app.geometry("650x600")
+app.geometry("850x600")
 app.resizable(False, False)
 app.configure(bg=DEFAULT_BG_COLOR)
 try: app.iconbitmap('app_icon.ico')
