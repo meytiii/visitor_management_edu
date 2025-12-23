@@ -613,7 +613,7 @@ def open_search_window():
 # --- Main Application Setup ---
 app = tk.Tk()
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {APP_VERSION}")
-app.geometry("850x600")
+app.geometry("1050x600")
 app.resizable(False, False)
 app.configure(bg=DEFAULT_BG_COLOR)
 try: app.iconbitmap('app_icon.ico')
@@ -643,7 +643,7 @@ card_frame = tk.Frame(app, bg=CARD_BG_COLOR, bd=2, relief="groove")
 card_frame.place(relx=0.5, rely=0.5, anchor="center", width=410, height=530)
 
 # Banner / Header (Inside Card)
-header_lbl = tk.Label(card_frame, text="سامانه ثبت ورود و خروج", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
+header_lbl = tk.Label(card_frame, text="(سامانه ثبت ورود و خروج (اداره حراست", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
 header_lbl.grid(row=0, column=0, columnspan=2, pady=(20, 30), sticky="ew")
 
 # Inputs (Inside Card)
