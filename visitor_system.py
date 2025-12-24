@@ -351,31 +351,32 @@ def create_backup():
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
-    dev_win.title("Developer Mode")
-    dev_win.geometry("400x560") # Increased height slightly to fit new button
+    dev_win.title("پنل مدیریت")  # Translated: Management Panel
+    dev_win.geometry("400x560")
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     dev_win.configure(bg=BLUE_COLOR)
     
-    tk.Label(dev_win, text="Developer Tools", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
+    # Label: Management Tools
+    tk.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
-    # 1. Add Dummy Data
-    tk.Button(dev_win, text="Add 100 Random Records", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    # 1. Add Dummy Data -> Add 100 Test Records
+    tk.Button(dev_win, text="افزودن ۱۰۰ رکورد آزمایشی", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 2. Delete DB
-    tk.Button(dev_win, text="Delete DB (Clear All)", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    # 2. Delete DB -> Clear Database
+    tk.Button(dev_win, text="پاکسازی کامل دیتابیس", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 3. Change Password
-    tk.Button(dev_win, text="Change Password", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    # 3. Change Password -> Change Password
+    tk.Button(dev_win, text="تغییر رمز عبور", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 4. Stats Button
+    # 4. Stats Button -> (Already Persian)
     tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
-    # 5. NEW: Create Backup Button
-    tk.Button(dev_win, text="Create Backup (Copy DB)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    # 5. Backup Button -> Create Backup
+    tk.Button(dev_win, text="تهیه نسخه پشتیبان (Backup)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
-
+    # Label: For support use only
+    tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 
 def submit_visitor():
@@ -411,11 +412,13 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
         y = 0
         line_height = 45
 
-        font_data = {"name": "B Titr", "height": 45, "weight": 700} 
+        font_data = {"name": "B Roya", "height": 45, "weight": 700} 
         f = win32ui.CreateFont(font_data)
         hDC.SelectObject(f)
 
         headers = [
+            ".جامعه معلمان، سربازان گمنام نظام اسلامی هستند",
+            "مقام معظم رهبری (مدظله العالی)",
             "********************************",
             "اداره کل آموزش و پرورش استان همدان",
             "(اداره حراست)",
@@ -432,8 +435,6 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
             "امضاء ملاقات شونده",
             "",
             "* حداکثر زمان حضور 2 ساعت می باشد *",
-            ".جامعه معلمان سربازان گمنام نظام اسلامی هستند",
-            "مقام معظم رهبری (مدظله العالی)",
             "********************************"
         ]
 
