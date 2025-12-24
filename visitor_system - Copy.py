@@ -3,35 +3,19 @@ import tkinter as tk
 from tkinter import messagebox, ttk, font
 from datetime import datetime
 import os
-import shutil  # Needed for backup
 import tempfile
 import platform
 import jdatetime
+
 import win32ui
 import win32print
 import win32con
+
 import random
+
 from PIL import Image, ImageTk
 
-# ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.2.9"
-
-# 1. Setup Hidden Database Path (ProgramData)
-# This points to C:\ProgramData\VisitorSystem\visitor_log.db
-APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
-
-# Ensure the folder exists
-if not os.path.exists(APP_DATA_DIR):
-    try:
-        os.makedirs(APP_DATA_DIR)
-    except OSError as e:
-        messagebox.showerror("Error", f"Could not create database folder:\n{e}")
-
-# This is the single source of truth for the DB location
-DB_PATH = os.path.join(APP_DATA_DIR, 'visitor_log.db')
-
-# ----------------- CONSTANTS -----------------
-
+APP_VERSION = "1.2.7"
 DEPARTMENT_LIST = [
     "حوزه مدیر کل", "معاونت پرورشی", "معاونت تربیت بدنی",
     "معاونت نهضت سواد آموزی", "معاونت آموزش متوسطه", "معاونت آموزش ابتدایی",
@@ -60,7 +44,7 @@ CARD_BG_COLOR = "#B1E666"
 
 # --- Database and Core Logic ---
 def setup_database():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect('visitor_log.db')
     cursor = conn.cursor()
     
     # 1. Visitor Table logic
@@ -94,7 +78,7 @@ def show_help_popup():
 
 def get_current_password():
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect('visitor_log.db')
         cursor = conn.cursor()
         cursor.execute("SELECT value FROM config WHERE key='dev_password'")
         result = cursor.fetchone()
@@ -130,7 +114,7 @@ def ask_dev_password():
 
 
 def set_new_password(new_pass):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect('visitor_log.db')
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('dev_password', ?)", (new_pass,))
     conn.commit(); conn.close()
@@ -175,7 +159,7 @@ def delete_all_records():
         return
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect('visitor_log.db')
         cursor = conn.cursor()
         
         # 1. Delete all rows
@@ -227,7 +211,7 @@ def add_dummy_data():
             
         dummy_records.sort(key=lambda x: x['entry_time'])
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect('visitor_log.db')
         cursor = conn.cursor()
         for r in dummy_records:
             cursor.execute('''
@@ -286,7 +270,7 @@ def show_daily_stats_ui(parent_win):
             target_date_str = f"{y}/{m.zfill(2)}/{d.zfill(2)}"
         
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect('visitor_log.db')
             cursor = conn.cursor()
             
             # 1. Total Registered
@@ -327,32 +311,11 @@ def show_daily_stats_ui(parent_win):
     tk.Button(btn_frame, text="امروز", command=set_today, bg="#FF9800", fg="white", font=(FONT_MAIN, 11, "bold"), relief="flat", width=10).pack(side=tk.LEFT, padx=10)
     tk.Button(btn_frame, text="محاسبه", command=lambda: calculate(), bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 11, "bold"), relief="flat", width=10).pack(side=tk.LEFT, padx=10)
 
-def create_backup():
-    """Copies the database from its hidden location to the app's current directory."""
-    try:
-        # Create a unique filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"backup_visitor_log_{timestamp}.db"
-        
-        # Destination: The folder where the .exe or .py script is running
-        destination_path = os.path.join(os.getcwd(), backup_filename)
-        
-        if not os.path.exists(DB_PATH):
-             messagebox.showerror("Error", "Database file not found! No data to backup.")
-             return
-
-        # Copy the file
-        shutil.copy2(DB_PATH, destination_path)
-        messagebox.showinfo("Backup Created", f"Backup successfully saved to:\n{destination_path}")
-        
-    except Exception as e:
-        messagebox.showerror("Backup Error", f"An error occurred:\n{e}")
-
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("Developer Mode")
-    dev_win.geometry("400x560") # Increased height slightly to fit new button
+    dev_win.geometry("400x500") # Increased height slightly
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     dev_win.configure(bg=BLUE_COLOR)
@@ -368,13 +331,11 @@ def open_developer_mode():
     # 3. Change Password
     tk.Button(dev_win, text="Change Password", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 4. Stats Button
+    # 4. NEW: Stats Button
     tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-
-    # 5. NEW: Create Backup Button
-    tk.Button(dev_win, text="Create Backup (Copy DB)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
     tk.Label(dev_win, text="⚠️ For Testing Purposes Only", font=("Segoe UI", 9), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
+
 
 
 
@@ -386,7 +347,7 @@ def submit_visitor():
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect('visitor_log.db')
         cursor = conn.cursor()
         cursor.execute('INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)',(visitor_name, national_id, employee_to_meet, department, entry_time_str, shamsi_date_str))
         visitor_id = cursor.lastrowid
@@ -547,7 +508,7 @@ def open_search_window():
             
     def fetch_and_display_records(filters=None):
         if filters is None: filters = {}
-        conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+        conn = sqlite3.connect('visitor_log.db'); cursor = conn.cursor()
         query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors WHERE 1=1"
         params = []
         if filters.get("name"): query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
@@ -609,7 +570,7 @@ def open_search_window():
 
             exit_time_str = datetime.now().strftime("%H:%M")
             try:
-                conn = sqlite3.connect(DB_PATH)
+                conn = sqlite3.connect('visitor_log.db')
                 cursor = conn.cursor()
                 cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
                 conn.commit(); conn.close()
@@ -628,7 +589,7 @@ def open_search_window():
         def confirm_exit():
             exit_time_str = datetime.now().strftime("%H:%M")
             try:
-                conn = sqlite3.connect(DB_PATH)
+                conn = sqlite3.connect('visitor_log.db')
                 cursor = conn.cursor()
                 cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
                 conn.commit(); conn.close()
