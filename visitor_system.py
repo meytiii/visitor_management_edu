@@ -338,15 +338,15 @@ def create_backup():
         destination_path = os.path.join(os.getcwd(), backup_filename)
         
         if not os.path.exists(DB_PATH):
-             messagebox.showerror("Error", "Database file not found! No data to backup.")
+             messagebox.showerror("خطا", ".فایل پایگاه داده یافت نشد! اطلاعاتی برای پشتیبان‌گیری وجود ندارد")
              return
 
         # Copy the file
         shutil.copy2(DB_PATH, destination_path)
-        messagebox.showinfo("Backup Created", f"Backup successfully saved to:\n{destination_path}")
+        messagebox.showinfo("عملیات موفق", f":نسخه پشتیبان با موفقیت ایجاد شد و در مسیر زیر ذخیره گردید\n\n{destination_path}")
         
     except Exception as e:
-        messagebox.showerror("Backup Error", f"An error occurred:\n{e}")
+        messagebox.showerror("خطا در پشتیبان‌گیری", f":خطایی در حین عملیات رخ داد\n{e}")
 
 
 def open_developer_mode():
