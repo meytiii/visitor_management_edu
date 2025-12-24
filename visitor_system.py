@@ -720,7 +720,7 @@ help_button.pack(fill="x", padx=30, pady=5)
 # Menu Bar
 menubar = tk.Menu(app)
 tools_menu = tk.Menu(menubar, tearoff=0)
-tools_menu.add_command(label="Developer mode", command=ask_dev_password)
+tools_menu.add_command(label="پنل مدیریت", command=ask_dev_password)
 menubar.add_cascade(label="امکانات", menu=tools_menu)
 app.config(menu=menubar)
 
