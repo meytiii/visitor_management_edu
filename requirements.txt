@@ -1,2 +1,4 @@
 jdatetime
+pywin32
+Pillow
 pyinstaller
