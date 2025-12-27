@@ -4,7 +4,7 @@ from tkinter import filedialog
 from tkinter import messagebox, ttk, font
 from datetime import datetime
 import os
-import shutil  # Needed for backup
+import shutil
 import tempfile
 import platform
 import jdatetime
@@ -15,20 +15,17 @@ import random
 from PIL import Image, ImageTk
 
 # ----------------- CONFIGURATION -----------------
+
 APP_VERSION = "1.2.9"
 
-# 1. Setup Hidden Database Path (ProgramData)
-# This points to C:\ProgramData\VisitorSystem\visitor_log.db
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
-# Ensure the folder exists
 if not os.path.exists(APP_DATA_DIR):
     try:
         os.makedirs(APP_DATA_DIR)
     except OSError as e:
         messagebox.showerror("Error", f"Could not create database folder:\n{e}")
 
-# This is the single source of truth for the DB location
 DB_PATH = os.path.join(APP_DATA_DIR, 'visitor_log.db')
 
 # ----------------- CONSTANTS -----------------
@@ -64,7 +61,6 @@ def setup_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # 1. Visitor Table logic
     try: 
         cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
     except sqlite3.OperationalError: 
@@ -78,7 +74,6 @@ def setup_database():
             shamsi_date TEXT, exit_time TEXT
         )''')
     
-    # 2. Config Table (For Password)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS config (
             key TEXT PRIMARY KEY,
@@ -171,7 +166,6 @@ def change_password_ui(parent_win):
 # --- DEVELOPER MODE FUNCTIONS ---
 def delete_all_records():
     """Deletes ALL data from the database and resets the ID counter."""
-    # Safety Check
     if not messagebox.askyesno("Danger Zone", "Are you sure you want to DELETE ALL records?\n\nThis cannot be undone!"):
         return
 
@@ -179,10 +173,8 @@ def delete_all_records():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # 1. Delete all rows
         cursor.execute("DELETE FROM visitors")
         
-        # 2. Reset the Auto-Increment ID counter so the next visitor starts at 1
         cursor.execute("DELETE FROM sqlite_sequence WHERE name='visitors'")
         
         conn.commit()
@@ -254,53 +246,43 @@ def show_daily_stats_ui(parent_win):
     
     tk.Label(stats_win, text=":تاریخ مورد نظر را وارد کنید", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12, "bold")).pack(pady=(20, 10))
     
-    # Date Input Frame (Year / Month / Day)
     date_frame = tk.Frame(stats_win, bg=BLUE_COLOR)
     date_frame.pack(pady=5)
     
-    # Day
     ent_day = tk.Entry(date_frame, justify='center', width=5, font=(FONT_MAIN, 11))
     ent_day.pack(side=tk.RIGHT, padx=2)
     tk.Label(date_frame, text="/", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(side=tk.RIGHT)
     
-    # Month
     ent_month = tk.Entry(date_frame, justify='center', width=5, font=(FONT_MAIN, 11))
     ent_month.pack(side=tk.RIGHT, padx=2)
     tk.Label(date_frame, text="/", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(side=tk.RIGHT)
     
-    # Year
     ent_year = tk.Entry(date_frame, justify='center', width=7, font=(FONT_MAIN, 11))
     ent_year.pack(side=tk.RIGHT, padx=2)
 
-    # Label to show results
     result_lbl = tk.Label(stats_win, text="", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12), justify="right")
     result_lbl.pack(pady=20)
 
     def calculate(target_date_str=None):
-        # If no specific date passed (like from 'Today' button), build it from fields
         if not target_date_str:
             y, m, d = ent_year.get(), ent_month.get(), ent_day.get()
             if not (y and m and d):
                 messagebox.showwarning("خطا", "لطفاً سال، ماه و روز را کامل وارد کنید", parent=stats_win)
                 return
-            # Pad with zeros (e.g., 5 -> 05) to match DB format
             target_date_str = f"{y}/{m.zfill(2)}/{d.zfill(2)}"
         
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            # 1. Total Registered
             cursor.execute("SELECT COUNT(*) FROM visitors WHERE shamsi_date = ?", (target_date_str,))
             total = cursor.fetchone()[0]
             
-            # 2. No Exit Time (NULL or Empty)
             cursor.execute("SELECT COUNT(*) FROM visitors WHERE shamsi_date = ? AND (exit_time IS NULL OR exit_time = '')", (target_date_str,))
             no_exit = cursor.fetchone()[0]
             
             conn.close()
             
-            # Update Label
             display_text = (
                 f"تاریخ: {target_date_str}\n\n"
                 f"تعداد کل ثبت شده: {total}\n"
@@ -312,16 +294,12 @@ def show_daily_stats_ui(parent_win):
             messagebox.showerror("Error", str(e), parent=stats_win)
 
     def set_today():
-        # Get today's Jalali date
         now_j = jdatetime.date.fromgregorian(date=datetime.now().date())
-        # Fill fields
         ent_year.delete(0, tk.END); ent_year.insert(0, str(now_j.year))
         ent_month.delete(0, tk.END); ent_month.insert(0, str(now_j.month))
         ent_day.delete(0, tk.END); ent_day.insert(0, str(now_j.day))
-        # Auto calculate
         calculate(now_j.strftime("%Y/%m/%d"))
 
-    # Buttons Frame
     btn_frame = tk.Frame(stats_win, bg=BLUE_COLOR)
     btn_frame.pack(pady=10)
     
@@ -331,18 +309,15 @@ def show_daily_stats_ui(parent_win):
 def create_backup():
     """Copies the database from its hidden location to the app's current directory."""
     try:
-        # Create a unique filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_filename = f"backup_visitor_log_{timestamp}.db"
         
-        # Destination: The folder where the .exe or .py script is running
         destination_path = os.path.join(os.getcwd(), backup_filename)
         
         if not os.path.exists(DB_PATH):
              messagebox.showerror("خطا", ".فایل پایگاه داده یافت نشد! اطلاعاتی برای پشتیبان‌گیری وجود ندارد")
              return
 
-        # Copy the file
         shutil.copy2(DB_PATH, destination_path)
         messagebox.showinfo("عملیات موفق", f":نسخه پشتیبان با موفقیت ایجاد شد و در مسیر زیر ذخیره گردید\n\n{destination_path}")
         
@@ -350,7 +325,7 @@ def create_backup():
         messagebox.showerror("خطا در پشتیبان‌گیری", f":خطایی در حین عملیات رخ داد\n{e}")
 
 def restore_backup():
-    """Imports records from a selected backup file and appends them with new IDs."""
+    """Imports records from a backup, skipping exact duplicates (Same ID + Same Time)."""
     # 1. Open File Browser
     backup_path = filedialog.askopenfilename(
         title="انتخاب فایل پشتیبان",
@@ -361,15 +336,12 @@ def restore_backup():
         return  # User cancelled
 
     try:
-        # 2. Check validity of the selected file
-        # We try to connect and select from the specific table. 
-        # If it fails, it's not a valid backup for this app.
+        # 2. Read data from the Backup file
         bk_conn = sqlite3.connect(backup_path)
         bk_cursor = bk_conn.cursor()
         
-        # Select all columns EXCEPT 'id'. 
-        # This allows the main DB to generate new IDs automatically (e.g., 301, 302...).
         try:
+            # Select essential columns (Skipping ID to allow auto-increment)
             bk_cursor.execute("SELECT visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors")
             records_to_import = bk_cursor.fetchall()
         except sqlite3.DatabaseError:
@@ -379,57 +351,69 @@ def restore_backup():
         bk_conn.close()
 
         if not records_to_import:
-            messagebox.showinfo("اطلاعات", "فایل انتخاب شده خالی است.")
+            messagebox.showinfo("اطلاعات", "فایل انتخاب شده خالی است")
             return
 
-        # 3. Insert into current database
-        # We append the data. The 'id' will auto-increment based on current DB's last ID.
+        # 3. Insert into current database with Duplicate Check
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        count = 0
+        imported_count = 0
+        duplicate_count = 0
+        
         for row in records_to_import:
-            cursor.execute('''
-                INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', row)
-            count += 1
+            # Check if this SPECIFIC visit already exists (Match National ID + Entry Time)
+            cursor.execute(
+                "SELECT 1 FROM visitors WHERE national_id = ? AND entry_time = ?", 
+                (row[1], row[4])
+            )
+            
+            if cursor.fetchone():
+                duplicate_count += 1
+            else:
+                cursor.execute('''
+                    INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', row)
+                imported_count += 1
             
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("عملیات موفق", f"{count} رکورد با موفقیت بازیابی و به لیست فعلی اضافه شد.")
+        # --- Message Formatting (Fixed) ---
+        # This format ensures the number is on the Right and text follows it
+        msg = f"{imported_count} : تعداد رکورد های جدید  "
+        
+        if duplicate_count > 0:
+            msg += f"\n\n(همچنین {duplicate_count} رکورد تکراری نادیده گرفته شد)"
+
+        messagebox.showinfo("نتیجه بازیابی", msg)
 
     except Exception:
-        messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست!\nلطفاً از صحیح بودن فایل پشتیبان و تعلق آن به این نرم‌افزار اطمینان حاصل کنید.")
+        messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید")
+
 
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("پنل مدیریت")
-    dev_win.geometry("400x620") # Increased height again to fit the 6th button
+    dev_win.geometry("400x620")
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     dev_win.configure(bg=BLUE_COLOR)
     
     tk.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
-    # 1. Add Dummy Data
     tk.Button(dev_win, text="افزودن ۱۰۰ رکورد آزمایشی", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 2. Delete DB
     tk.Button(dev_win, text="پاکسازی کامل دیتابیس", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 3. Change Password
     tk.Button(dev_win, text="تغییر رمز عبور", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 4. Stats Button
     tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
-    # 5. Create Backup Button
     tk.Button(dev_win, text="تهیه نسخه پشتیبان (Backup)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
-    # 6. Import Backup Button
     tk.Button(dev_win, text="بازیابی اطلاعات (Import)", command=restore_backup, bg="#795548", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
     tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
@@ -525,12 +509,10 @@ def setup_background(window_root):
     if not os.path.exists("background.png"): return
     try:
         window_root.original_img = Image.open("background.png")
-        # Create label attached to ROOT window (app), not frame
         bg_label = tk.Label(window_root)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
         def resize_image(event):
-            # Check if the event is coming from the main window itself
             if event.widget == window_root:
                 new_w, new_h = event.width, event.height
                 if new_w < 50 or new_h < 50: return
@@ -540,7 +522,6 @@ def setup_background(window_root):
                 bg_label.image = photo 
                 
         window_root.bind('<Configure>', resize_image)
-        # Ensure background stays behind the card
         bg_label.lower()
     except Exception as e: print(f"Background Error: {e}")
 
@@ -635,7 +616,7 @@ def open_search_window():
         item_values = tree.item(selected_item, "values")
         visitor_id = item_values[0]
         visitor_name = item_values[1]
-        entry_shamsi_date = item_values[6] # Get the recorded entry date
+        entry_shamsi_date = item_values[6]
         existing_exit_time = item_values[7]
 
         if existing_exit_time and existing_exit_time.strip():
@@ -727,25 +708,18 @@ style = ttk.Style(app); style.theme_use("vista")
 style.configure(".", font=(FONT_MAIN, 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
-#frame = ttk.Frame(app, padding=(20, 15)); frame.pack(expand=True, fill=tk.BOTH)
-
 # --- APPLY BACKGROUND IMAGE ---
-# Ensure 'background.jpg' is in the same folder
 setup_background(app)
 
 # --- CENTRAL CARD CONTAINER ---
-# This frame holds all the inputs and sits in the center of the window
 card_frame = tk.Frame(app, bg=CARD_BG_COLOR, bd=2, relief="groove")
 card_frame.place(relx=0.5, rely=0.5, anchor="center", width=410, height=530)
 
-# Banner / Header (Inside Card)
 header_lbl = tk.Label(card_frame, text="(سامانه ثبت ورود و خروج (اداره حراست", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
 header_lbl.grid(row=0, column=0, columnspan=2, pady=(20, 30), sticky="ew")
 
-# Inputs (Inside Card)
 labels = {": نام ملاقات کننده": 1, ": شماره کارت ملی": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
 for text, row in labels.items():
-    # Note: bg=CARD_BG_COLOR makes the label look transparent against the card
     tk.Label(card_frame, text=text, font=(FONT_MAIN, 13), bg=CARD_BG_COLOR, fg="black", anchor="e").grid(row=row, column=1, padx=(10, 30), pady=10, sticky="e")
 
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
@@ -760,7 +734,6 @@ combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)
 
 card_frame.grid_columnconfigure(0, weight=1)
 
-# Buttons (Inside Card, below inputs)
 btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
 btn_frame.grid(row=5, column=0, columnspan=2, pady=(30, 20), sticky="ew")
 
@@ -773,7 +746,6 @@ search_db_button.pack(fill="x", padx=30, pady=5)
 help_button = tk.Button(btn_frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
 help_button.pack(fill="x", padx=30, pady=5)
 
-# Menu Bar
 menubar = tk.Menu(app)
 tools_menu = tk.Menu(menubar, tearoff=0)
 tools_menu.add_command(label="پنل مدیریت", command=ask_dev_password)
