@@ -16,7 +16,7 @@ from PIL import Image, ImageTk
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.2.9"
+APP_VERSION = "1.3.1"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
