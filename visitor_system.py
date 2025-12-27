@@ -349,34 +349,89 @@ def create_backup():
     except Exception as e:
         messagebox.showerror("خطا در پشتیبان‌گیری", f":خطایی در حین عملیات رخ داد\n{e}")
 
+def restore_backup():
+    """Imports records from a selected backup file and appends them with new IDs."""
+    # 1. Open File Browser
+    backup_path = filedialog.askopenfilename(
+        title="انتخاب فایل پشتیبان",
+        filetypes=[("Database Files", "*.db"), ("All Files", "*.*")]
+    )
+    
+    if not backup_path:
+        return  # User cancelled
+
+    try:
+        # 2. Check validity of the selected file
+        # We try to connect and select from the specific table. 
+        # If it fails, it's not a valid backup for this app.
+        bk_conn = sqlite3.connect(backup_path)
+        bk_cursor = bk_conn.cursor()
+        
+        # Select all columns EXCEPT 'id'. 
+        # This allows the main DB to generate new IDs automatically (e.g., 301, 302...).
+        try:
+            bk_cursor.execute("SELECT visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors")
+            records_to_import = bk_cursor.fetchall()
+        except sqlite3.DatabaseError:
+            bk_conn.close()
+            raise Exception("Invalid Schema")
+
+        bk_conn.close()
+
+        if not records_to_import:
+            messagebox.showinfo("اطلاعات", "فایل انتخاب شده خالی است.")
+            return
+
+        # 3. Insert into current database
+        # We append the data. The 'id' will auto-increment based on current DB's last ID.
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        count = 0
+        for row in records_to_import:
+            cursor.execute('''
+                INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', row)
+            count += 1
+            
+        conn.commit()
+        conn.close()
+
+        messagebox.showinfo("عملیات موفق", f"{count} رکورد با موفقیت بازیابی و به لیست فعلی اضافه شد.")
+
+    except Exception:
+        messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست!\nلطفاً از صحیح بودن فایل پشتیبان و تعلق آن به این نرم‌افزار اطمینان حاصل کنید.")
+
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
-    dev_win.title("پنل مدیریت")  # Translated: Management Panel
-    dev_win.geometry("400x560")
+    dev_win.title("پنل مدیریت")
+    dev_win.geometry("400x620") # Increased height again to fit the 6th button
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     dev_win.configure(bg=BLUE_COLOR)
     
-    # Label: Management Tools
     tk.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
-    # 1. Add Dummy Data -> Add 100 Test Records
+    # 1. Add Dummy Data
     tk.Button(dev_win, text="افزودن ۱۰۰ رکورد آزمایشی", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 2. Delete DB -> Clear Database
+    # 2. Delete DB
     tk.Button(dev_win, text="پاکسازی کامل دیتابیس", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 3. Change Password -> Change Password
+    # 3. Change Password
     tk.Button(dev_win, text="تغییر رمز عبور", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # 4. Stats Button -> (Already Persian)
+    # 4. Stats Button
     tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
-    # 5. Backup Button -> Create Backup
+    # 5. Create Backup Button
     tk.Button(dev_win, text="تهیه نسخه پشتیبان (Backup)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+
+    # 6. Import Backup Button
+    tk.Button(dev_win, text="بازیابی اطلاعات (Import)", command=restore_backup, bg="#795548", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
-    # Label: For support use only
     tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 

@@ -1,3 +1,5 @@
+pip install -r requirements.txt
+
 To convert the code to .exe file, write this command in the python terminal of the project directory :
 python -m PyInstaller --noconsole --onefile --icon=app_icon.ico visitor_system.py
 
