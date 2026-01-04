@@ -18,6 +18,6 @@ if you cant find your python in interpreter list run this instead (replace ASUS 
 
 
 for 32 bit windows : 
-& "C:\Users\ASUS\AppData\Local\Programs\Python\Python37-32\python.exe" -m pip install jdatetime pyinstaller
+& "C:\Users\ASUS\AppData\Local\Programs\Python\Python37-32\python.exe" -m pip install jdatetime pyinstaller pywin32 Pillow
 
 & "C:\Users\ASUS\AppData\Local\Programs\Python\Python37-32\python.exe" -m PyInstaller --noconsole --onefile --icon=app_icon.ico visitor_system.py
