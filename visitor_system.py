@@ -17,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
@@ -391,63 +392,126 @@ def restore_backup():
     except Exception:
         messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید")
 
+# --- Helper Function for Persian Text in Plots ---
+def make_farsi(text):
+    reshaped_text = arabic_reshaper.reshape(text)
+    return reshaped_text[::-1]
+
+# --- Heatmap Analytics Function ---
 def show_heatmap_analytics():
-    """Generates a bar chart showing busiest hours of the day."""
     analytics_win = tk.Toplevel(app)
     analytics_win.title("تحلیل آماری تردد")
-    analytics_win.geometry("800x600")
+    analytics_win.geometry("900x650")
     try: analytics_win.iconbitmap('app_icon.ico')
     except: pass
     analytics_win.configure(bg="white")
 
-    tk.Label(analytics_win, text="نمودار ساعات اوج تردد (Heatmap)", font=(FONT_MAIN, 16, "bold"), bg="white", fg="#333").pack(pady=10)
+    filter_frame = tk.Frame(analytics_win, bg="#E3F2FD", bd=1, relief="solid")
+    filter_frame.pack(fill=tk.X, padx=10, pady=10)
 
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT strftime('%H', entry_time) as hour, COUNT(*) FROM visitors GROUP BY hour ORDER BY hour")
-        data = cursor.fetchall()
-        conn.close()
-    except Exception as e:
-        messagebox.showerror("Error", f"Database Error: {e}")
-        return
+    tk.Label(filter_frame, text=":فیلتر زمانی", bg="#E3F2FD", font=(FONT_MAIN, 12, "bold")).pack(side=tk.RIGHT, padx=10, pady=10)
 
-    if not data:
-        tk.Label(analytics_win, text="اطلاعاتی برای نمایش وجود ندارد", font=(FONT_MAIN, 14), bg="white").pack(pady=50)
-        return
+    years = [str(i) for i in range(1400, 1411)]
+    days = [str(i) for i in range(1, 32)]
 
-    hours = [row[0] for row in data]
-    counts = [row[1] for row in data]
-    
-    full_hours = [f"{h:02d}" for h in range(7, 20)]
-    full_counts = []
-    for h in full_hours:
-        if h in hours:
-            idx = hours.index(h)
-            full_counts.append(counts[idx])
-        else:
-            full_counts.append(0)
+    cb_day = ttk.Combobox(filter_frame, values=[""] + days, width=3, state="readonly", justify='center')
+    cb_day.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="روز", bg="#E3F2FD").pack(side=tk.RIGHT)
 
-    fig = Figure(figsize=(7, 5), dpi=100)
-    ax = fig.add_subplot(111)
-    
-    bars = ax.bar(full_hours, full_counts, color='#3F51B5', width=0.6)
-    
-    ax.set_title("توزیع فراوانی مراجعین در ساعات مختلف", fontsize=14, fontname=FONT_TABLE)
-    ax.set_xlabel("ساعت ورود", fontsize=12, fontname=FONT_TABLE)
-    ax.set_ylabel("تعداد مراجعین", fontsize=12, fontname=FONT_TABLE)
-    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    cb_month = ttk.Combobox(filter_frame, values=[""] + PERSIAN_MONTHS, width=10, state="readonly", justify='center')
+    cb_month.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="ماه", bg="#E3F2FD").pack(side=tk.RIGHT)
 
-    for bar in bars:
-        height = bar.get_height()
-        if height > 0:
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{int(height)}',
-                    ha='center', va='bottom')
+    cb_year = ttk.Combobox(filter_frame, values=[""] + years, width=5, state="readonly", justify='center')
+    cb_year.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="سال", bg="#E3F2FD").pack(side=tk.RIGHT)
 
-    canvas = FigureCanvasTkAgg(fig, master=analytics_win)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+    chart_container = tk.Frame(analytics_win, bg="white")
+    chart_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    def update_chart():
+        for widget in chart_container.winfo_children():
+            widget.destroy()
+
+        y, m_name, d = cb_year.get(), cb_month.get(), cb_day.get()
+        
+        query = "SELECT strftime('%H', entry_time) as hour, COUNT(*) FROM visitors WHERE 1=1"
+        params = []
+        
+        title_context = "کل ادوار" 
+
+        if y:
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"{y}%")
+            title_context = f"سال {y}"
+        
+        if m_name in PERSIAN_MONTHS:
+            m_idx = PERSIAN_MONTHS.index(m_name) + 1
+            m_str = f"{m_idx:02d}"
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"%/{m_str}/%")
+            title_context += f" - {m_name}"
+            
+        if d:
+            d_str = d.zfill(2)
+            query += " AND shamsi_date LIKE ?"
+            params.append(f"%/{d_str}")
+            title_context += f" - روز {d}"
+
+        query += " GROUP BY hour ORDER BY hour"
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            data = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            tk.Label(chart_container, text=f"خطای دیتابیس: {e}", fg="red", bg="white").pack()
+            return
+
+        if not data:
+            tk.Label(chart_container, text="اطلاعاتی با این فیلتر یافت نشد", font=(FONT_MAIN, 14), bg="white", fg="#777").pack(pady=50)
+            return
+
+        hours_found = [row[0] for row in data]
+        counts_found = [row[1] for row in data]
+        
+        full_hours = [f"{h:02d}" for h in range(7, 20)] 
+        full_counts = []
+        for h in full_hours:
+            if h in hours_found:
+                idx = hours_found.index(h)
+                full_counts.append(counts_found[idx])
+            else:
+                full_counts.append(0)
+
+        fig = Figure(figsize=(8, 5), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        bars = ax.bar(full_hours, full_counts, color='#3F51B5', width=0.6, zorder=3)
+        
+        final_title = f"تحلیل تردد - {title_context}"
+        ax.set_title(make_farsi(final_title), fontsize=14, fontname=FONT_TABLE)
+        ax.set_xlabel(make_farsi("ساعت ورود"), fontsize=12, fontname=FONT_TABLE)
+        ax.set_ylabel(make_farsi("تعداد مراجعین"), fontsize=12, fontname=FONT_TABLE)
+        
+        ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
+
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{int(height)}', ha='center', va='bottom', fontsize=10)
+
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    tk.Button(filter_frame, text="نمایش نمودار", command=update_chart, bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11), width=12).pack(side=tk.LEFT, padx=10)
+
+    update_chart()
+
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
@@ -852,5 +916,5 @@ menubar.add_cascade(label="امکانات", menu=tools_menu)
 app.config(menu=menubar)
 
 if __name__ == "__main__":
-    setup_database()
+    setup_database() 
     app.mainloop()
