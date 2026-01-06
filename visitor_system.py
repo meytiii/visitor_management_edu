@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.3.2"
+APP_VERSION = "1.4.1"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -429,6 +429,37 @@ def show_heatmap_analytics():
     chart_container = tk.Frame(analytics_win, bg="white")
     chart_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
+def show_heatmap_analytics():
+    analytics_win = tk.Toplevel(app)
+    analytics_win.title("تحلیل آماری تردد")
+    analytics_win.geometry("900x650")
+    try: analytics_win.iconbitmap('app_icon.ico')
+    except: pass
+    analytics_win.configure(bg="white")
+
+    filter_frame = tk.Frame(analytics_win, bg="#E3F2FD", bd=1, relief="solid")
+    filter_frame.pack(fill=tk.X, padx=10, pady=10)
+
+    tk.Label(filter_frame, text=":فیلتر زمانی", bg="#E3F2FD", font=(FONT_MAIN, 12, "bold")).pack(side=tk.RIGHT, padx=10, pady=10)
+
+    years = [str(i) for i in range(1400, 1411)]
+    days = [str(i) for i in range(1, 32)]
+
+    cb_day = ttk.Combobox(filter_frame, values=[""] + days, width=3, state="readonly", justify='center')
+    cb_day.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="روز", bg="#E3F2FD").pack(side=tk.RIGHT)
+
+    cb_month = ttk.Combobox(filter_frame, values=[""] + PERSIAN_MONTHS, width=10, state="readonly", justify='center')
+    cb_month.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="ماه", bg="#E3F2FD").pack(side=tk.RIGHT)
+
+    cb_year = ttk.Combobox(filter_frame, values=[""] + years, width=5, state="readonly", justify='center')
+    cb_year.pack(side=tk.RIGHT, padx=2)
+    tk.Label(filter_frame, text="سال", bg="#E3F2FD").pack(side=tk.RIGHT)
+
+    chart_container = tk.Frame(analytics_win, bg="white")
+    chart_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
     def update_chart():
         for widget in chart_container.winfo_children():
             widget.destroy()
@@ -508,9 +539,17 @@ def show_heatmap_analytics():
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+    def reset_filters():
+        cb_year.set("")
+        cb_month.set("")
+        cb_day.set("")
+        update_chart()
+
     tk.Button(filter_frame, text="نمایش نمودار", command=update_chart, bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11), width=12).pack(side=tk.LEFT, padx=10)
+    tk.Button(filter_frame, text="حذف فیلترها", command=reset_filters, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 11), width=12).pack(side=tk.LEFT, padx=10)
 
     update_chart()
+
 
 
 def open_developer_mode():
