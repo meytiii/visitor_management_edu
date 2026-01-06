@@ -947,12 +947,11 @@ card_frame.place(relx=0.5, rely=0.5, anchor="center", width=410, height=530)
 header_lbl = tk.Label(card_frame, text="(سامانه ثبت ورود و خروج (اداره حراست", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
 header_lbl.grid(row=0, column=0, columnspan=2, pady=(20, 30), sticky="ew")
 
-# UPDATED ORDER: National ID is Row 1, Name is Row 2
 labels = {": شماره کارت ملی": 1, ": نام ملاقات کننده": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
 for text, row in labels.items():
     tk.Label(card_frame, text=text, font=(FONT_MAIN, 13), bg=CARD_BG_COLOR, fg="black", anchor="e").grid(row=row, column=1, padx=(10, 30), pady=10, sticky="e")
 
-# 1. Create Widgets (In order of appearance for correct Tabbing)
+# 1. Create Widgets
 vcmd = (app.register(validate_numeric), '%P')
 entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
