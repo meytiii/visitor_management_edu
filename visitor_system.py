@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.4.1"
+APP_VERSION = "1.4.3"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -889,6 +889,24 @@ def open_search_window():
     reset_action()
 
 
+def check_returning_visitor(event):
+    nid = entry_national_id.get().strip()
+    if len(nid) < 5: return
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT visitor_name FROM visitors WHERE national_id = ? ORDER BY id DESC LIMIT 1", (nid,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            if not entry_visitor_name.get():
+                entry_visitor_name.delete(0, tk.END)
+                entry_visitor_name.insert(0, result[0])
+    except: pass
+
+
 # --- Main Application Setup ---
 app = tk.Tk()
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {APP_VERSION}")
@@ -931,6 +949,7 @@ combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='rig
 
 entry_visitor_name.grid(row=1, column=0, sticky="ew", padx=(30, 5), pady=10)
 entry_national_id.grid(row=2, column=0, sticky="ew", padx=(30, 5), pady=10)
+entry_national_id.bind("<FocusOut>", check_returning_visitor)
 entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(30, 5), pady=10)
 combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)
 
