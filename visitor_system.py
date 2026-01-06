@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.4.3"
+APP_VERSION = "1.4.4"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -972,6 +972,17 @@ tools_menu = tk.Menu(menubar, tearoff=0)
 tools_menu.add_command(label="پنل مدیریت", command=ask_dev_password)
 menubar.add_cascade(label="امکانات", menu=tools_menu)
 app.config(menu=menubar)
+
+# --- QoL: Press Enter to move to next field ---
+def focus_next_widget(event):
+    event.widget.tk_focusNext().focus()
+    return("break")
+
+try:
+    for widget in [entry_visitor_name, entry_national_id, entry_employee_to_meet, combo_department]:
+        widget.bind("<Return>", focus_next_widget)
+except NameError: pass
+
 
 if __name__ == "__main__":
     setup_database() 
