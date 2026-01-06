@@ -331,22 +331,19 @@ def create_backup():
 
 def restore_backup():
     """Imports records from a backup, skipping exact duplicates (Same ID + Same Time)."""
-    # 1. Open File Browser
     backup_path = filedialog.askopenfilename(
         title="انتخاب فایل پشتیبان",
         filetypes=[("Database Files", "*.db"), ("All Files", "*.*")]
     )
     
     if not backup_path:
-        return  # User cancelled
+        return
 
     try:
-        # 2. Read data from the Backup file
         bk_conn = sqlite3.connect(backup_path)
         bk_cursor = bk_conn.cursor()
         
         try:
-            # Select essential columns (Skipping ID to allow auto-increment)
             bk_cursor.execute("SELECT visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors")
             records_to_import = bk_cursor.fetchall()
         except sqlite3.DatabaseError:
@@ -359,7 +356,6 @@ def restore_backup():
             messagebox.showinfo("اطلاعات", "فایل انتخاب شده خالی است")
             return
 
-        # 3. Insert into current database with Duplicate Check
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
@@ -367,7 +363,6 @@ def restore_backup():
         duplicate_count = 0
         
         for row in records_to_import:
-            # Check if this SPECIFIC visit already exists (Match National ID + Entry Time)
             cursor.execute(
                 "SELECT 1 FROM visitors WHERE national_id = ? AND entry_time = ?", 
                 (row[1], row[4])
@@ -385,8 +380,7 @@ def restore_backup():
         conn.commit()
         conn.close()
 
-        # --- Message Formatting (Fixed) ---
-        # This format ensures the number is on the Right and text follows it
+        # --- Message Formatting ---
         msg = f"{imported_count} : تعداد رکورد های جدید  "
         
         if duplicate_count > 0:
@@ -397,12 +391,68 @@ def restore_backup():
     except Exception:
         messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید")
 
+def show_heatmap_analytics():
+    """Generates a bar chart showing busiest hours of the day."""
+    analytics_win = tk.Toplevel(app)
+    analytics_win.title("تحلیل آماری تردد")
+    analytics_win.geometry("800x600")
+    try: analytics_win.iconbitmap('app_icon.ico')
+    except: pass
+    analytics_win.configure(bg="white")
 
+    tk.Label(analytics_win, text="نمودار ساعات اوج تردد (Heatmap)", font=(FONT_MAIN, 16, "bold"), bg="white", fg="#333").pack(pady=10)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT strftime('%H', entry_time) as hour, COUNT(*) FROM visitors GROUP BY hour ORDER BY hour")
+        data = cursor.fetchall()
+        conn.close()
+    except Exception as e:
+        messagebox.showerror("Error", f"Database Error: {e}")
+        return
+
+    if not data:
+        tk.Label(analytics_win, text="اطلاعاتی برای نمایش وجود ندارد", font=(FONT_MAIN, 14), bg="white").pack(pady=50)
+        return
+
+    hours = [row[0] for row in data]
+    counts = [row[1] for row in data]
+    
+    full_hours = [f"{h:02d}" for h in range(7, 20)]
+    full_counts = []
+    for h in full_hours:
+        if h in hours:
+            idx = hours.index(h)
+            full_counts.append(counts[idx])
+        else:
+            full_counts.append(0)
+
+    fig = Figure(figsize=(7, 5), dpi=100)
+    ax = fig.add_subplot(111)
+    
+    bars = ax.bar(full_hours, full_counts, color='#3F51B5', width=0.6)
+    
+    ax.set_title("توزیع فراوانی مراجعین در ساعات مختلف", fontsize=14, fontname=FONT_TABLE)
+    ax.set_xlabel("ساعت ورود", fontsize=12, fontname=FONT_TABLE)
+    ax.set_ylabel("تعداد مراجعین", fontsize=12, fontname=FONT_TABLE)
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+    for bar in bars:
+        height = bar.get_height()
+        if height > 0:
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+
+    canvas = FigureCanvasTkAgg(fig, master=analytics_win)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("پنل مدیریت")
-    dev_win.geometry("400x620")
+    dev_win.geometry("400x680")
     try: dev_win.iconbitmap('app_icon.ico')
     except: pass
     dev_win.configure(bg=BLUE_COLOR)
@@ -410,15 +460,13 @@ def open_developer_mode():
     tk.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
     
     tk.Button(dev_win, text="افزودن ۱۰۰ رکورد آزمایشی", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    
     tk.Button(dev_win, text="پاکسازی کامل دیتابیس", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    
     tk.Button(dev_win, text="تغییر رمز عبور", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    
     tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
+    
+    tk.Button(dev_win, text="نمودار تحلیل ترافیک (Heatmap)", command=show_heatmap_analytics, bg="#E91E63", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
     tk.Button(dev_win, text="تهیه نسخه پشتیبان (Backup)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-
     tk.Button(dev_win, text="بازیابی اطلاعات (Import)", command=restore_backup, bg="#795548", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
     
     tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
@@ -637,7 +685,6 @@ def open_search_window():
     def populate_tree(records):
         for i in tree.get_children(): tree.delete(i)
         for record in records:
-            # Format display time (HH:MM)
             try:
                 dt_obj = datetime.strptime(record[5], "%Y-%m-%d %H:%M:%S")
                 display_time = dt_obj.strftime("%H:%M")
