@@ -583,24 +583,44 @@ def focus_next_widget(event):
 def validate_numeric(text):
     return text == "" or text.isdigit()
 
+def show_status(message, color="black", duration=4000):
+    """Updates the status bar and auto-clears it after 'duration' ms."""
+    status_bar.config(text=message, fg=color)
+    app.after(duration, lambda: status_bar.config(text="آماده به کار", fg="black"))
+
 
 def submit_visitor():
-    visitor_name, national_id, employee_to_meet, department = (entry_visitor_name.get(), entry_national_id.get(), entry_employee_to_meet.get(), combo_department.get())
+    visitor_name = entry_visitor_name.get()
+    national_id = entry_national_id.get()
+    employee_to_meet = entry_employee_to_meet.get()
+    department = combo_department.get()
+
     if not all([visitor_name, national_id, employee_to_meet, department]):
-        messagebox.showwarning("خطا", "لطفاً تمام اطلاعات را وارد کنید"); return
+        messagebox.showwarning("خطا", "لطفاً تمام اطلاعات را وارد کنید")
+        return
+
     now = datetime.now()
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)',(visitor_name, national_id, employee_to_meet, department, entry_time_str, shamsi_date_str))
+        cursor.execute('INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)',
+                       (visitor_name, national_id, employee_to_meet, department, entry_time_str, shamsi_date_str))
         visitor_id = cursor.lastrowid
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
+
         print_receipt(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str)
+        
         clear_fields()
-        messagebox.showinfo("موفق", f"ورود مهمان با شماره {visitor_id} ثبت شد")
-    except sqlite3.Error as e: messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
+        
+        show_status(f"✓ ورود مهمان با شماره {visitor_id} با موفقیت ثبت شد", "#2E7D32")
+
+    except sqlite3.Error as e:
+        messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
+
 
 def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
     try:
@@ -1035,6 +1055,19 @@ try:
 except NameError: pass
 
 
+
 if __name__ == "__main__":
     setup_database() 
+    # --- STATUS BAR (Quality of Life) ---
+    status_bar = tk.Label(
+        app, 
+        text="آماده به کار", 
+        bd=1, 
+        relief=tk.SUNKEN, 
+        anchor=tk.E,        # Align text to the Right (East) for Persian
+        font=(FONT_MAIN, 11), 
+        bg="#E0E0E0",
+        padx=10
+    )
+    status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     app.mainloop()
