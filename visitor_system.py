@@ -747,26 +747,39 @@ def validate_numeric(text):
 
 # --- STATUS BAR LOGIC ---
 
-def cycle_cultural_messages():
-    """Updates the status bar with a random quote every 20 seconds."""
-    current_color = status_bar.cget("fg")
-    
-    if current_color == "#555555": 
-        quote = random.choice(CULTURAL_MESSAGES)
-        status_bar.config(text=f"  {quote}", fg="#555555")
-    
-    app.after(20000, cycle_cultural_messages)
+# Global variable to track the random quote timer
+cycle_timer_id = None
 
-def show_status(message, color="black", duration=5000):
+def cycle_cultural_messages():
+    """Updates the status bar with a random quote and resets the 30s timer."""
+    global cycle_timer_id
+    
+    quote = random.choice(CULTURAL_MESSAGES)
+    status_bar.config(text=f"  {quote}", fg="#555555")
+    
+    cycle_timer_id = app.after(30000, cycle_cultural_messages)
+
+def start_quote_cycle():
+    """Starts the initial delay for quotes."""
+    global cycle_timer_id
+    cycle_timer_id = app.after(30000, cycle_cultural_messages)
+
+def show_status(message, color="black", duration=10000):
     """
-    Displays a priority message (Success/Error).
-    Stays for 'duration' (5s), then immediately switches back to a random quote.
+    Displays a priority message.
+    Cancels the background quote timer so it doesn't overwrite this message.
+    Restarts the quote timer after the message expires.
     """
+    global cycle_timer_id
+    
+    if cycle_timer_id:
+        app.after_cancel(cycle_timer_id)
+        cycle_timer_id = None
+        
     status_bar.config(text=f"  {message}", fg=color)
     
     def return_to_quotes():
-        quote = random.choice(CULTURAL_MESSAGES)
-        status_bar.config(text=f"  {quote}", fg="#555555")
+        cycle_cultural_messages()
     
     app.after(duration, return_to_quotes)
 
@@ -1091,13 +1104,20 @@ def open_search_window():
         selected_item = tree.selection()
         if not selected_item: return
         item_values = tree.item(selected_item, "values")
-        visitor_id, visitor_name, entry_shamsi_date, existing_exit = item_values[0], item_values[1], item_values[6], item_values[7]
+        
+        visitor_id = item_values[0]
+        visitor_name = item_values[1]
+        national_id = item_values[2]
+        entry_shamsi_date = item_values[6]
+        existing_exit = item_values[7]
 
         if existing_exit and existing_exit.strip():
-            messagebox.showerror("خطا", "ساعت خروج قبلاً ثبت شده است", parent=search_win); return
+            messagebox.showerror("خطا", "ساعت خروج قبلاً ثبت شده است", parent=search_win)
+            return
 
         popup = tk.Toplevel(search_win)
-        popup.title("ثبت خروج"); popup.geometry("350x200")
+        popup.title("ثبت خروج")
+        popup.geometry("350x200")
         x = search_win.winfo_x() + (search_win.winfo_width() // 2) - 175
         y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 100
         popup.geometry(f"+{x}+{y}")
@@ -1106,20 +1126,36 @@ def open_search_window():
         
         def confirm():
             current_shamsi = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+            
             if entry_shamsi_date != current_shamsi:
-                messagebox.showerror("خطا", "ثبت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup); return
+                messagebox.showerror("خطا", "ثبت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup)
+                return
             
             try:
-                conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
                 cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (datetime.now().strftime("%H:%M"), visitor_id))
-                conn.commit(); conn.close()
-                popup.destroy(); search_action()
-                messagebox.showinfo("موفق", "خروج ثبت شد", parent=search_win)
-            except Exception as e: messagebox.showerror("Error", str(e))
+                conn.commit()
+                conn.close()
+                
+                popup.destroy()
+                search_win.destroy()
+                
+                app.deiconify()
+                app.focus_set()
+                
+                msg = f"✓ زمان خروج برای {visitor_name} (کدملی: {national_id}) با شماره ثبت {visitor_id} با موفقیت ثبت شد"
+                show_status(msg, "#2E7D32", duration=10000)
+                
+            except Exception as e: 
+                messagebox.showerror("Error", str(e))
 
-        btn_f = tk.Frame(popup); btn_f.pack(pady=10)
+        btn_f = tk.Frame(popup)
+        btn_f.pack(pady=10)
         tk.Button(btn_f, text="تایید خروج", bg=GREEN_COLOR, fg="white", width=12, command=confirm).pack(side=tk.RIGHT, padx=5)
         tk.Button(btn_f, text="انصراف", bg=RED_COLOR, fg="white", width=12, command=popup.destroy).pack(side=tk.RIGHT, padx=5)
+
+
 
     tree.bind("<Double-1>", on_tree_double_click)
 
@@ -1311,15 +1347,10 @@ try:
 except NameError: pass
 
 
-
-
-
 if __name__ == "__main__":
     setup_database()
-
-
     update_employee_suggestions()
-
+    
     # --- STATUS BAR ---
     status_bar = tk.Label(
         app, 
@@ -1335,7 +1366,8 @@ if __name__ == "__main__":
     status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     
     status_bar.config(text="  با سلام - به سامانه مدیریت مراجعین (اداره حراست) خوش آمدید")
-    app.after(30000, cycle_cultural_messages)
+    
+    start_quote_cycle()
 
     # --- QoL: ACTIVE FIELD HIGHLIGHTING ---
     def on_focus_in(event):
@@ -1351,6 +1383,7 @@ if __name__ == "__main__":
         widget.bind("<FocusOut>", on_focus_out, add="+")
 
     app.mainloop()
+
 
 
 
