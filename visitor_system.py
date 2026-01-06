@@ -575,6 +575,10 @@ def open_developer_mode():
     tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 
+def validate_numeric(text):
+    return text == "" or text.isdigit()
+
+
 def submit_visitor():
     visitor_name, national_id, employee_to_meet, department = (entry_visitor_name.get(), entry_national_id.get(), entry_employee_to_meet.get(), combo_department.get())
     if not all([visitor_name, national_id, employee_to_meet, department]):
@@ -943,13 +947,18 @@ for text, row in labels.items():
     tk.Label(card_frame, text=text, font=(FONT_MAIN, 13), bg=CARD_BG_COLOR, fg="black", anchor="e").grid(row=row, column=1, padx=(10, 30), pady=10, sticky="e")
 
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
-entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+vcmd = (app.register(validate_numeric), '%P')
+entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
+entry_national_id.bind("<FocusOut>", check_returning_visitor)
+entry_national_id.bind("<Return>", focus_next_widget)
 entry_employee_to_meet = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
 combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 
 entry_visitor_name.grid(row=1, column=0, sticky="ew", padx=(30, 5), pady=10)
-entry_national_id.grid(row=2, column=0, sticky="ew", padx=(30, 5), pady=10)
+vcmd = (app.register(validate_numeric), '%P')
+entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
+entry_national_id.bind("<Return>", focus_next_widget)
 entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(30, 5), pady=10)
 combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)
 
