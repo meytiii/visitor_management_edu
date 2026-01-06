@@ -27,7 +27,7 @@ class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, selection_callback=None, **kwargs):
         super().__init__(master, **kwargs)
         self.completevalues = sorted(completevalues) if completevalues else []
-        self.selection_callback = selection_callback  # <--- NEW PARAMETER
+        self.selection_callback = selection_callback
         self.var = self["textvariable"]
         if self.var == '':
             self.var = tk.StringVar()
@@ -88,7 +88,6 @@ class AutocompleteEntry(ttk.Entry):
             
             if selected_val:
                 self.var.set(selected_val)
-                # <--- TRIGGER CALLBACK HERE ---
                 if self.selection_callback:
                     self.selection_callback(selected_val)
             
@@ -1134,6 +1133,21 @@ def open_search_window():
 
     reset_action()
 
+
+def auto_fill_department(employee_name):
+    """Finds the most recent department for the selected employee and fills the combobox."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT department FROM visitors WHERE employee_to_meet = ? ORDER BY id DESC LIMIT 1", (employee_name,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            combo_department.set(result[0])
+    except: pass
+
+
 def update_employee_suggestions():
     """Reads employee names, sorted by how often they receive visitors (Popularity)."""
     try:
@@ -1247,7 +1261,13 @@ entry_national_id.bind("<Return>", on_national_id_enter)
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
 entry_visitor_name.bind("<Return>", focus_next_widget)
 
-entry_employee_to_meet = AutocompleteEntry(card_frame, justify='right', font=(FONT_MAIN, 13))
+entry_employee_to_meet = AutocompleteEntry(
+    card_frame, 
+    justify='right', 
+    font=(FONT_MAIN, 13),
+    selection_callback=auto_fill_department
+)
+
 
 combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 combo_department.bind("<Return>", focus_next_widget)
