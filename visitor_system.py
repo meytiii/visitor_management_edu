@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.4.5"
+APP_VERSION = "1.4.7"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -937,8 +937,38 @@ style = ttk.Style(app); style.theme_use("vista")
 style.configure(".", font=(FONT_MAIN, 13), background=DEFAULT_BG_COLOR)
 style.configure("TLabel", anchor="east"); style.configure("TFrame", background=DEFAULT_BG_COLOR)
 
+
 # --- APPLY BACKGROUND IMAGE ---
 setup_background(app)
+
+# --- LIVE CLOCK & DATE DASHBOARD ---
+def update_live_clock():
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S")
+    
+    j_date = jdatetime.date.fromgregorian(date=now.date())
+    persian_date_str = j_date.strftime("%Y/%m/%d")
+    
+    live_clock_label.config(text=f"{persian_date_str}   -   {current_time}")
+    
+    live_clock_label.after(1000, update_live_clock)
+
+live_clock_label = tk.Label(
+    app, 
+    text="", 
+    font=(FONT_MAIN, 14, "bold"), 
+    bg=DEFAULT_BG_COLOR,
+    fg="#00695C"       
+)
+
+live_clock_label.place(relx=1.0, y=20, anchor="ne", x=-30)
+
+live_clock_label.lift()
+
+update_live_clock()
+
+
+
 
 # --- CENTRAL CARD CONTAINER ---
 card_frame = tk.Frame(app, bg=CARD_BG_COLOR, bd=2, relief="groove")
