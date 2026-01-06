@@ -21,7 +21,7 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.5.4"
+APP_VERSION = "1.5.7"
 
 class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, **kwargs):
@@ -768,13 +768,13 @@ def show_status(message, color="black", duration=5000):
 
 def on_national_id_enter(event):
     """
-    Handles Enter key on National ID field.
-    - If ID exists: Auto-fills Name and Jumps to Employee field (Skips Name).
-    - If ID is new: Jumps to Visitor Name field.
+    Handles Enter Key on National ID:
+    - FOUND: Auto-fill Name -> Jump to Employee (Skip Name)
+    - NEW: Jump to Visitor Name
     """
     nid = entry_national_id.get().strip()
     
-    next_widget = entry_visitor_name
+    target_widget = entry_visitor_name
     
     if len(nid) >= 5:
         try:
@@ -789,11 +789,12 @@ def on_national_id_enter(event):
                     entry_visitor_name.delete(0, tk.END)
                     entry_visitor_name.insert(0, result[0])
                 
-                next_widget = entry_employee_to_meet
+                target_widget = entry_employee_to_meet
         except: pass
 
-    next_widget.focus_set()
+    target_widget.focus_set()
     return "break"
+
 
 
 
@@ -1237,11 +1238,10 @@ entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13),
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
 entry_national_id.bind("<Return>", on_national_id_enter) 
 
-
-entry_employee_to_meet = AutocompleteEntry(card_frame, justify='right', font=(FONT_MAIN, 13))
-
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
 entry_visitor_name.bind("<Return>", focus_next_widget)
+
+entry_employee_to_meet = AutocompleteEntry(card_frame, justify='right', font=(FONT_MAIN, 13))
 
 combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 combo_department.bind("<Return>", focus_next_widget)
