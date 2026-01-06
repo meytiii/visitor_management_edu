@@ -5,3 +5,5 @@ pyinstaller
 pandas
 matplotlib
 openpyxl
+python-bidi
+arabic-reshaper 
