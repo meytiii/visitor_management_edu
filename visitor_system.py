@@ -362,15 +362,18 @@ def delete_all_records():
         messagebox.showerror("Error", f"Failed to delete data: {e}")
 
 def add_dummy_data():
-    """Generates 100 random records and inserts them into the database."""
+    """Generates 100 random records with random Visitors AND Employees."""
     try:
-        first_names = ["علی", "محمد", "رضا", "حسین", "محسن", "احمد", "مهدی", "سارا", "مریم", "زهرا", "فاطمه", "نرگس", "نیما", "کاوه", "امید", "پیمان", "سعید"]
-        last_names = ["محمدی", "حسینی", "رضایی", "کریمی", "احمدی", "موسوی", "جعفری", "صادقی", "رحیمی", "عباسی", "باقری", "زاهدی", "میرزایی", "غفاری"]
+        first_names = ["علی", "محمد", "رضا", "حسین", "محسن", "احمد", "مهدی", "سارا", "مریم", "زهرا", "فاطمه", "نرگس", "نیما", "کاوه", "امید", "پیمان", "سعید", "بهرام", "نازنین"]
+        last_names = ["محمدی", "حسینی", "رضایی", "کریمی", "احمدی", "موسوی", "جعفری", "صادقی", "رحیمی", "عباسی", "باقری", "زاهدی", "میرزایی", "غفاری", "تهرانی", "راد"]
         
         dummy_records = []
         
         for _ in range(100):
-            full_name = f"{random.choice(first_names)} {random.choice(last_names)}"
+            visitor_name = f"{random.choice(first_names)} {random.choice(last_names)}"
+            
+            employee_name = f"{random.choice(first_names)} {random.choice(last_names)}"
+            
             nid = str(random.randint(1000000000, 9999999999))
             year = random.choice([1403, 1404])
             month = random.randint(1, 12)
@@ -379,23 +382,31 @@ def add_dummy_data():
             else: day = random.randint(1, 29)
             
             shamsi_date = f"{year}/{month:02d}/{day:02d}"
-            hour = random.randint(8, 13) 
+            
+            hour = random.randint(7, 14) 
             minute = random.randint(0, 59)
             second = random.randint(0, 59)
             time_str = f"{hour:02d}:{minute:02d}:{second:02d}"
             
-            g_date = jdatetime.date(year, month, day).togregorian()
-            entry_time_gregorian = f"{g_date.year}-{g_date.month:02d}-{g_date.day:02d} {time_str}"
+            try:
+                g_date = jdatetime.date(year, month, day).togregorian()
+                entry_time_gregorian = f"{g_date.year}-{g_date.month:02d}-{g_date.day:02d} {time_str}"
+            except:
+                continue 
             
             dept = random.choice(DEPARTMENT_LIST)
             
             dummy_records.append({
-                "visitor_name": full_name, "national_id": nid, "employee_to_meet": "-",
-                "department": dept, "entry_time": entry_time_gregorian, "shamsi_date": shamsi_date
+                "visitor_name": visitor_name, 
+                "national_id": nid, 
+                "employee_to_meet": employee_name, 
+                "department": dept, 
+                "entry_time": entry_time_gregorian, 
+                "shamsi_date": shamsi_date
             })
             
         dummy_records.sort(key=lambda x: x['entry_time'])
-
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         for r in dummy_records:
@@ -406,10 +417,14 @@ def add_dummy_data():
         
         conn.commit()
         conn.close()
-        messagebox.showinfo("Developer Mode", "100 Random Records Added Successfully!")
-
+        
+        messagebox.showinfo("Developer Mode", "100 Random Records (Full Data) Added Successfully!")
+        
+        update_employee_suggestions()
+        
     except Exception as e:
         messagebox.showerror("Error", f"Failed to generate data: {e}")
+
 
 def show_daily_stats_ui(parent_win):
     """Popup to show daily entry/exit counts."""
