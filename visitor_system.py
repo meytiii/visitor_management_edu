@@ -40,18 +40,21 @@ class AutocompleteEntry(ttk.Entry):
         self.bind("<FocusOut>", self.hidetip)
         
         self.lb_up = False
+        self._after_id = None
 
     def changed(self, name, index, mode):
         if self.var.get() == '':
-            self.hidetip()
+            self._destroy_lb()
             return
 
         words = self.comparison()
         if words:
             if not self.lb_up:
                 self.lb = tk.Listbox(self.master, width=self["width"], height=4, font=self["font"], bd=1, relief=tk.SOLID)
-                self.lb.bind("<Double-Button-1>", self.selection)
+                
+                self.lb.bind("<ButtonRelease-1>", self.selection)
                 self.lb.bind("<Right>", self.selection)
+                
                 self.lb.place(x=self.winfo_x(), y=self.winfo_y() + self.winfo_height())
                 self.lb.lift() 
                 self.lb_up = True
@@ -60,22 +63,32 @@ class AutocompleteEntry(ttk.Entry):
             for w in words:
                 self.lb.insert(tk.END, w)
         else:
-            self.hidetip()
+            self._destroy_lb()
 
     def comparison(self):
         pattern = self.var.get().lower()
         return [w for w in self.completevalues if pattern in w.lower()]
 
     def selection(self, event):
+        if self._after_id:
+            self.after_cancel(self._after_id)
+            self._after_id = None
+
         if self.lb_up:
-            if self.lb.curselection():
-                self.var.set(self.lb.get(self.lb.curselection()))
-                self.lb.destroy()
-                self.lb_up = False
-                self.icursor(tk.END)
-                self.tk_focusNext().focus()
+            if event and event.widget == self.lb:
+                try:
+                    index = self.lb.nearest(event.y)
+                    self.var.set(self.lb.get(index))
+                except: pass
             else:
-                pass
+                try:
+                    if self.lb.curselection():
+                        self.var.set(self.lb.get(self.lb.curselection()))
+                except: pass
+            
+            self._destroy_lb()
+            self.icursor(tk.END)
+            self.tk_focusNext().focus()
             return "break"
 
     def move_up(self, event):
@@ -104,12 +117,13 @@ class AutocompleteEntry(ttk.Entry):
 
     def hidetip(self, event=None):
         if self.lb_up:
-            self.after(100, self._destroy_lb)
+            self._after_id = self.after(200, self._destroy_lb)
     
     def _destroy_lb(self):
         if self.lb_up:
             self.lb.destroy()
             self.lb_up = False
+            self._after_id = None
             
     def set_completion_list(self, completion_list):
         self.completevalues = sorted(completion_list)
