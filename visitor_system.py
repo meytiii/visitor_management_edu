@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.4.4"
+APP_VERSION = "1.4.5"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -947,28 +947,35 @@ card_frame.place(relx=0.5, rely=0.5, anchor="center", width=410, height=530)
 header_lbl = tk.Label(card_frame, text="(سامانه ثبت ورود و خروج (اداره حراست", font=(FONT_MAIN, 16, "bold"), bg=CARD_BG_COLOR, fg="#37474F")
 header_lbl.grid(row=0, column=0, columnspan=2, pady=(20, 30), sticky="ew")
 
-labels = {": نام ملاقات کننده": 1, ": شماره کارت ملی": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
+# UPDATED ORDER: National ID is Row 1, Name is Row 2
+labels = {": شماره کارت ملی": 1, ": نام ملاقات کننده": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
 for text, row in labels.items():
     tk.Label(card_frame, text=text, font=(FONT_MAIN, 13), bg=CARD_BG_COLOR, fg="black", anchor="e").grid(row=row, column=1, padx=(10, 30), pady=10, sticky="e")
 
-entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+# 1. Create Widgets (In order of appearance for correct Tabbing)
 vcmd = (app.register(validate_numeric), '%P')
 entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
 entry_national_id.bind("<Return>", focus_next_widget)
-entry_employee_to_meet = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
-combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 
-entry_visitor_name.grid(row=1, column=0, sticky="ew", padx=(30, 5), pady=10)
-vcmd = (app.register(validate_numeric), '%P')
-entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
-entry_national_id.bind("<FocusOut>", check_returning_visitor)
-entry_national_id.bind("<Return>", focus_next_widget)
-entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(30, 5), pady=10)
-combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)
+entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+entry_visitor_name.bind("<Return>", focus_next_widget)
+
+entry_employee_to_meet = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
+entry_employee_to_meet.bind("<Return>", focus_next_widget)
+
+combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
+combo_department.bind("<Return>", focus_next_widget)
+
+# 2. Place Widgets (Grid) - UPDATED ROWS
+entry_national_id.grid(row=1, column=0, sticky="ew", padx=(30, 5), pady=10)      # Top
+entry_visitor_name.grid(row=2, column=0, sticky="ew", padx=(30, 5), pady=10)     # Second
+entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(30, 5), pady=10) # Third
+combo_department.grid(row=4, column=0, sticky="ew", padx=(30, 5), pady=10)       # Fourth
 
 card_frame.grid_columnconfigure(0, weight=1)
 
+# 3. Buttons
 btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
 btn_frame.grid(row=5, column=0, columnspan=2, pady=(30, 20), sticky="ew")
 
@@ -986,6 +993,7 @@ tools_menu = tk.Menu(menubar, tearoff=0)
 tools_menu.add_command(label="پنل مدیریت", command=ask_dev_password)
 menubar.add_cascade(label="امکانات", menu=tools_menu)
 app.config(menu=menubar)
+
 
 # --- QoL: Press Enter to move to next field ---
 def focus_next_widget(event):
