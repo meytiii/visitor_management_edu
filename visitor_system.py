@@ -641,7 +641,7 @@ def open_search_window():
             try:
                 dt_obj = datetime.strptime(record[5], "%Y-%m-%d %H:%M:%S")
                 display_time = dt_obj.strftime("%H:%M")
-            except: display_time = record[5] # Fallback
+            except: display_time = record[5]
             
             display_record = (record[0], record[1], record[2], record[3], record[4], display_time, record[6] or "", record[7] or "")
             tree.insert("", tk.END, values=display_record)
