@@ -2,3 +2,6 @@ jdatetime
 pywin32
 Pillow
 pyinstaller
+pandas
+matplotlib
+openpyxl
