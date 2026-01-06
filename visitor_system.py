@@ -825,7 +825,7 @@ def submit_visitor():
         
         clear_fields()
         
-        show_status(f"✓ ورود مهمان با شماره {visitor_id} با موفقیت ثبت شد", "#2E7D32")
+        show_status(f"✓ ورود مهمان با شماره {visitor_id} با موفقیت ثبت شد", "#2E7D32", duration=10000)
 
         update_employee_suggestions()
 
