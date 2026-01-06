@@ -21,7 +21,7 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.5.7"
+APP_VERSION = "1.5.9"
 
 class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, selection_callback=None, **kwargs):
