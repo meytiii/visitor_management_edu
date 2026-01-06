@@ -76,6 +76,27 @@ def clear_fields():
     entry_employee_to_meet.delete(0, tk.END); combo_department.set("")
     entry_visitor_name.focus()
 
+# --- BACKGROUND SETUP FUNCTION ---
+def setup_background(window_root):
+    if not os.path.exists("background.png"): return
+    try:
+        window_root.original_img = Image.open("background.png")
+        bg_label = tk.Label(window_root)
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        def resize_image(event):
+            if event.widget == window_root:
+                new_w, new_h = event.width, event.height
+                if new_w < 50 or new_h < 50: return
+                resized = window_root.original_img.resize((new_w, new_h), Image.BICUBIC)
+                photo = ImageTk.PhotoImage(resized)
+                bg_label.config(image=photo)
+                bg_label.image = photo 
+                
+        window_root.bind('<Configure>', resize_image)
+        bg_label.lower()
+    except Exception as e: print(f"Background Error: {e}")
+
 # --- STATUS BAR LOGIC ---
 def cycle_cultural_messages():
     current_color = status_bar.cget("fg")
