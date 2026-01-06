@@ -21,8 +21,92 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
+APP_VERSION = "1.5.2"
 
-APP_VERSION = "1.5.1"
+class AutocompleteEntry(ttk.Entry):
+    def __init__(self, master, completevalues=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.completevalues = sorted(completevalues) if completevalues else []
+        self.var = self["textvariable"]
+        if self.var == '':
+            self.var = tk.StringVar()
+            self["textvariable"] = self.var
+        
+        self.var.trace('w', self.changed)
+        self.bind("<Right>", self.selection)
+        self.bind("<Up>", self.move_up)
+        self.bind("<Down>", self.move_down)
+        self.bind("<Return>", self.selection)
+        self.bind("<FocusOut>", self.hidetip)
+        
+        self.lb_up = False
+
+    def changed(self, name, index, mode):
+        if self.var.get() == '':
+            self.hidetip()
+            return
+
+        words = self.comparison()
+        if words:
+            if not self.lb_up:
+                self.lb = tk.Listbox(self.master, width=self["width"], height=4, font=self["font"], bd=1, relief=tk.SOLID)
+                self.lb.bind("<Double-Button-1>", self.selection)
+                self.lb.bind("<Right>", self.selection)
+                self.lb.place(x=self.winfo_x(), y=self.winfo_y() + self.winfo_height())
+                self.lb_up = True
+            
+            self.lb.delete(0, tk.END)
+            for w in words:
+                self.lb.insert(tk.END, w)
+        else:
+            self.hidetip()
+
+    def comparison(self):
+        pattern = self.var.get().lower()
+        return [w for w in self.completevalues if pattern in w.lower()]
+
+    def selection(self, event):
+        if self.lb_up:
+            if self.lb.curselection():
+                self.var.set(self.lb.get(self.lb.curselection()))
+            else:
+                pass
+            self.hidetip()
+            self.tk_focusNext().focus()
+            return "break"
+
+    def move_up(self, event):
+        if self.lb_up:
+            if self.lb.curselection() == ():
+                index = '0'
+            else:
+                index = self.lb.curselection()[0]
+            if index != '0':
+                self.lb.selection_clear(first=index)
+                index = str(int(index) - 1)
+                self.lb.selection_set(first=index)
+                self.lb.activate(index)
+
+    def move_down(self, event):
+        if self.lb_up:
+            if self.lb.curselection() == ():
+                index = '0'
+            else:
+                index = self.lb.curselection()[0]
+            if index != str(self.lb.size() - 1):
+                self.lb.selection_clear(first=index)
+                index = str(int(index) + 1)
+                self.lb.selection_set(first=index)
+                self.lb.activate(index)
+
+    def hidetip(self, event=None):
+        if self.lb_up:
+            self.lb.destroy()
+            self.lb_up = False
+            
+    def set_completion_list(self, completion_list):
+        self.completevalues = sorted(completion_list)
+
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -691,6 +775,8 @@ def submit_visitor():
         
         show_status(f"✓ ورود مهمان با شماره {visitor_id} با موفقیت ثبت شد", "#2E7D32")
 
+        update_employee_suggestions()
+
     except sqlite3.Error as e:
         messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
@@ -990,6 +1076,26 @@ def open_search_window():
 
     reset_action()
 
+def update_employee_suggestions():
+    """Reads employee names, sorted by how often they receive visitors (Popularity)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT employee_to_meet, COUNT(*) as cnt 
+            FROM visitors 
+            WHERE employee_to_meet != '' 
+            GROUP BY employee_to_meet 
+            ORDER BY cnt DESC
+        ''')
+        names = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        entry_employee_to_meet.set_completion_list(names)
+    except: pass
+
+
+
 
 def check_returning_visitor(event):
     nid = entry_national_id.get().strip()
@@ -1080,11 +1186,10 @@ entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13),
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
 entry_national_id.bind("<Return>", focus_next_widget)
 
+entry_employee_to_meet = AutocompleteEntry(card_frame, justify='right', font=(FONT_MAIN, 13))
+
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
 entry_visitor_name.bind("<Return>", focus_next_widget)
-
-entry_employee_to_meet = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
-entry_employee_to_meet.bind("<Return>", focus_next_widget)
 
 combo_department = ttk.Combobox(card_frame, values=DEPARTMENT_LIST, justify='right', state='readonly', font=(FONT_MAIN, 12))
 combo_department.bind("<Return>", focus_next_widget)
@@ -1123,16 +1228,20 @@ def focus_next_widget(event):
     return("break")
 
 try:
-    for widget in [entry_visitor_name, entry_national_id, entry_employee_to_meet, combo_department]:
+    for widget in [entry_visitor_name, entry_national_id, combo_department]:
         widget.bind("<Return>", focus_next_widget)
 except NameError: pass
 
 
 
+
 if __name__ == "__main__":
     setup_database()
-    
-    # --- STATUS BAR WIDGET ---
+
+
+    update_employee_suggestions()
+
+    # --- STATUS BAR ---
     status_bar = tk.Label(
         app, 
         text="", 
@@ -1145,11 +1254,24 @@ if __name__ == "__main__":
         fg="#555555"
     )
     status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
+    
     status_bar.config(text="  با سلام - به سامانه مدیریت مراجعین (اداره حراست) خوش آمدید")
-
     app.after(30000, cycle_cultural_messages)
 
+    # --- QoL: ACTIVE FIELD HIGHLIGHTING ---
+    def on_focus_in(event):
+        event.widget.configure(bg="#E3F2FD")
+
+    def on_focus_out(event):
+        event.widget.configure(bg="white")
+
+    all_inputs = [entry_visitor_name, entry_national_id, entry_employee_to_meet, combo_department]
+    
+    for widget in all_inputs:
+        widget.bind("<FocusIn>", on_focus_in, add="+")
+        widget.bind("<FocusOut>", on_focus_out, add="+")
+
     app.mainloop()
+
 
 
