@@ -575,6 +575,11 @@ def open_developer_mode():
     tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
 
 
+def focus_next_widget(event):
+    event.widget.tk_focusNext().focus()
+    return("break")
+
+
 def validate_numeric(text):
     return text == "" or text.isdigit()
 
