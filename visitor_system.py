@@ -24,9 +24,10 @@ import arabic_reshaper
 APP_VERSION = "1.5.7"
 
 class AutocompleteEntry(ttk.Entry):
-    def __init__(self, master, completevalues=None, **kwargs):
+    def __init__(self, master, completevalues=None, selection_callback=None, **kwargs):
         super().__init__(master, **kwargs)
         self.completevalues = sorted(completevalues) if completevalues else []
+        self.selection_callback = selection_callback  # <--- NEW PARAMETER
         self.var = self["textvariable"]
         if self.var == '':
             self.var = tk.StringVar()
@@ -51,10 +52,8 @@ class AutocompleteEntry(ttk.Entry):
         if words:
             if not self.lb_up:
                 self.lb = tk.Listbox(self.master, width=self["width"], height=8, font=self["font"], bd=1, relief=tk.SOLID)
-                
                 self.lb.bind("<ButtonRelease-1>", self.selection)
                 self.lb.bind("<Right>", self.selection)
-                
                 self.lb.place(x=self.winfo_x(), y=self.winfo_y() + self.winfo_height())
                 self.lb.lift() 
                 self.lb_up = True
@@ -75,16 +74,23 @@ class AutocompleteEntry(ttk.Entry):
             self._after_id = None
 
         if self.lb_up:
+            selected_val = None
             if event and event.widget == self.lb:
                 try:
                     index = self.lb.nearest(event.y)
-                    self.var.set(self.lb.get(index))
+                    selected_val = self.lb.get(index)
                 except: pass
             else:
                 try:
                     if self.lb.curselection():
-                        self.var.set(self.lb.get(self.lb.curselection()))
+                        selected_val = self.lb.get(self.lb.curselection())
                 except: pass
+            
+            if selected_val:
+                self.var.set(selected_val)
+                # <--- TRIGGER CALLBACK HERE ---
+                if self.selection_callback:
+                    self.selection_callback(selected_val)
             
             self._destroy_lb()
             self.icursor(tk.END)
