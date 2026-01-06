@@ -50,7 +50,7 @@ class AutocompleteEntry(ttk.Entry):
         words = self.comparison()
         if words:
             if not self.lb_up:
-                self.lb = tk.Listbox(self.master, width=self["width"], height=4, font=self["font"], bd=1, relief=tk.SOLID)
+                self.lb = tk.Listbox(self.master, width=self["width"], height=8, font=self["font"], bd=1, relief=tk.SOLID)
                 
                 self.lb.bind("<ButtonRelease-1>", self.selection)
                 self.lb.bind("<Right>", self.selection)
@@ -67,7 +67,7 @@ class AutocompleteEntry(ttk.Entry):
 
     def comparison(self):
         pattern = self.var.get().lower()
-        return [w for w in self.completevalues if pattern in w.lower()]
+        return [w for w in self.completevalues if w.lower().startswith(pattern)]
 
     def selection(self, event):
         if self._after_id:
