@@ -766,6 +766,36 @@ def show_status(message, color="black", duration=5000):
     app.after(duration, return_to_quotes)
 
 
+def on_national_id_enter(event):
+    """
+    Handles Enter key on National ID field.
+    - If ID exists: Auto-fills Name and Jumps to Employee field (Skips Name).
+    - If ID is new: Jumps to Visitor Name field.
+    """
+    nid = entry_national_id.get().strip()
+    
+    next_widget = entry_visitor_name
+    
+    if len(nid) >= 5:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT visitor_name FROM visitors WHERE national_id = ? ORDER BY id DESC LIMIT 1", (nid,))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                if not entry_visitor_name.get():
+                    entry_visitor_name.delete(0, tk.END)
+                    entry_visitor_name.insert(0, result[0])
+                
+                next_widget = entry_employee_to_meet
+        except: pass
+
+    next_widget.focus_set()
+    return "break"
+
+
 
 def submit_visitor():
     visitor_name = entry_visitor_name.get()
@@ -1205,7 +1235,8 @@ for text, row in labels.items():
 vcmd = (app.register(validate_numeric), '%P')
 entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
 entry_national_id.bind("<FocusOut>", check_returning_visitor)
-entry_national_id.bind("<Return>", focus_next_widget)
+entry_national_id.bind("<Return>", on_national_id_enter) 
+
 
 entry_employee_to_meet = AutocompleteEntry(card_frame, justify='right', font=(FONT_MAIN, 13))
 
@@ -1249,9 +1280,10 @@ def focus_next_widget(event):
     return("break")
 
 try:
-    for widget in [entry_visitor_name, entry_national_id, combo_department]:
+    for widget in [entry_visitor_name, combo_department]:
         widget.bind("<Return>", focus_next_widget)
 except NameError: pass
+
 
 
 
