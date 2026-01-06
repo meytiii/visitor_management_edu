@@ -22,7 +22,7 @@ import arabic_reshaper
 
 # ----------------- CONFIGURATION -----------------
 
-APP_VERSION = "1.4.7"
+APP_VERSION = "1.5.1"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -1057,17 +1057,21 @@ except NameError: pass
 
 
 if __name__ == "__main__":
-    setup_database() 
-    # --- STATUS BAR (Quality of Life) ---
+    setup_database()
+
+    # --- STATUS BAR ---
     status_bar = tk.Label(
         app, 
         text="آماده به کار", 
         bd=1, 
         relief=tk.SUNKEN, 
-        anchor=tk.E,        # Align text to the Right (East) for Persian
+        anchor=tk.E, 
         font=(FONT_MAIN, 11), 
         bg="#E0E0E0",
         padx=10
     )
     status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    app.after(4000, lambda: status_bar.config(text=""))
+
     app.mainloop()
