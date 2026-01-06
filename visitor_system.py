@@ -21,7 +21,7 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.5.2"
+APP_VERSION = "1.5.4"
 
 class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, **kwargs):
@@ -53,6 +53,7 @@ class AutocompleteEntry(ttk.Entry):
                 self.lb.bind("<Double-Button-1>", self.selection)
                 self.lb.bind("<Right>", self.selection)
                 self.lb.place(x=self.winfo_x(), y=self.winfo_y() + self.winfo_height())
+                self.lb.lift() 
                 self.lb_up = True
             
             self.lb.delete(0, tk.END)
@@ -69,10 +70,12 @@ class AutocompleteEntry(ttk.Entry):
         if self.lb_up:
             if self.lb.curselection():
                 self.var.set(self.lb.get(self.lb.curselection()))
+                self.lb.destroy()
+                self.lb_up = False
+                self.icursor(tk.END)
+                self.tk_focusNext().focus()
             else:
                 pass
-            self.hidetip()
-            self.tk_focusNext().focus()
             return "break"
 
     def move_up(self, event):
@@ -100,6 +103,10 @@ class AutocompleteEntry(ttk.Entry):
                 self.lb.activate(index)
 
     def hidetip(self, event=None):
+        if self.lb_up:
+            self.after(100, self._destroy_lb)
+    
+    def _destroy_lb(self):
         if self.lb_up:
             self.lb.destroy()
             self.lb_up = False
