@@ -950,32 +950,36 @@ def setup_background(window_root):
 
 def open_shift_log_window():
     log_win = tk.Toplevel(app)
-    log_win.title("دفتر وقایع و گزارشات شیفت")
-    log_win.geometry("700x600")
+    log_win.title("دفتر ثبت وقایع و گزارشات")
+    log_win.geometry("700x550")
     try: log_win.iconbitmap('app_icon.ico')
     except: pass
     log_win.configure(bg="#ECEFF1")
 
-    # --- TOP: HISTORY LIST ---
+    # --- LIST SECTION ---
     list_frame = ttk.LabelFrame(log_win, text="سوابق وقایع ثبت شده", padding=(10, 10))
     list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
     scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL)
-    
-    log_list = tk.Listbox(list_frame, font=(FONT_TABLE, 12), height=10, yscrollcommand=scrollbar.set)
+    log_list = tk.Listbox(list_frame, font=(FONT_TABLE, 12), height=10, yscrollcommand=scrollbar.set, justify='right')
     scrollbar.config(command=log_list.yview)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     log_list.pack(fill=tk.BOTH, expand=True)
 
-    # --- BOTTOM: ADD NEW ENTRY ---
+    # --- INPUT SECTION ---
     input_frame = ttk.LabelFrame(log_win, text="ثبت گزارش جدید", padding=(10, 10))
     input_frame.pack(fill=tk.X, padx=10, pady=10, side=tk.BOTTOM)
 
     tk.Label(input_frame, text=":شرح واقعه", font=(FONT_MAIN, 11)).pack(anchor=tk.E)
     
-    txt_input = tk.Text(input_frame, height=4, font=(FONT_MAIN, 11), direction="rtl") 
+    txt_input = tk.Text(input_frame, height=3, font=(FONT_MAIN, 11))
+    txt_input.tag_configure("right", justify='right')
     txt_input.pack(fill=tk.X, pady=5)
+    txt_input.insert("1.0", "") 
     
+    def align_text(event): txt_input.tag_add("right", "1.0", "end")
+    txt_input.bind("<KeyRelease>", align_text)
+
     def load_logs():
         log_list.delete(0, tk.END)
         try:
@@ -984,42 +988,30 @@ def open_shift_log_window():
             cursor.execute("SELECT shamsi_date, created_at, event_text FROM shift_logs ORDER BY id DESC")
             records = cursor.fetchall()
             conn.close()
-            
             for row in records:
                 s_date = row[0]
-                time_only = row[1].split(' ')[1][:5] 
+                time_only = row[1].split(' ')[1][:5]
                 text = row[2]
-                display_text = f"[{s_date} - {time_only}]   {text}"
+                display_text = f"{text}   |   [{s_date} - {time_only}]"
                 log_list.insert(tk.END, display_text)
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+        except Exception as e: messagebox.showerror("Error", str(e))
 
     def save_log():
         text = txt_input.get("1.0", tk.END).strip()
-        if len(text) < 2:
-            return 
-            
+        if len(text) < 2: return
         now = datetime.now()
         created_at = now.strftime("%Y-%m-%d %H:%M:%S")
         s_date = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
-        
         try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO shift_logs (event_text, created_at, shamsi_date) VALUES (?, ?, ?)", 
-                           (text, created_at, s_date))
-            conn.commit()
-            conn.close()
-            
-            txt_input.delete("1.0", tk.END) 
+            conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+            cursor.execute("INSERT INTO shift_logs (event_text, created_at, shamsi_date) VALUES (?, ?, ?)", (text, created_at, s_date))
+            conn.commit(); conn.close()
+            txt_input.delete("1.0", tk.END)
             load_logs()
-            messagebox.showinfo("موفق", "گزارش با موفقیت ثبت شد")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showinfo("موفق", "گزارش در دفتر وقایع ثبت شد")
+        except Exception as e: messagebox.showerror("Error", str(e))
 
-    btn_save = tk.Button(input_frame, text="ثبت در دفتر وقایع", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11, "bold"), command=save_log)
-    btn_save.pack(anchor=tk.W, pady=5)
-
+    tk.Button(input_frame, text="ثبت گزارش", bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 11), command=save_log).pack(anchor=tk.W)
     load_logs()
 
 
@@ -1409,16 +1401,22 @@ submit_button.pack(fill="x", padx=30, pady=5)
 search_db_button = tk.Button(btn_frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
 search_db_button.pack(fill="x", padx=30, pady=5)
 
-log_button = tk.Button(btn_frame, text="دفتر وقایع", command=open_shift_log_window, bg="#795548", fg="white", activebackground="#5D4037", activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
-log_button.pack(fill="x", padx=30, pady=5)
-
 help_button = tk.Button(btn_frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
 help_button.pack(fill="x", padx=30, pady=5)
 
+
+#--- MENU BAR SETUP ---
 menubar = tk.Menu(app)
+# 1. Management Menu
 tools_menu = tk.Menu(menubar, tearoff=0)
-tools_menu.add_command(label="پنل مدیریت", command=ask_dev_password)
-menubar.add_cascade(label="امکانات", menu=tools_menu)
+tools_menu.add_command(label="پنل مدیریت (Admin)", command=ask_dev_password)
+menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
+
+# 2. NEW Guard Menu
+guard_menu = tk.Menu(menubar, tearoff=0)
+guard_menu.add_command(label="دفتر ثبت وقایع", command=open_shift_log_window)
+menubar.add_cascade(label="امور نگهبانی", menu=guard_menu)
+
 app.config(menu=menubar)
 
 
