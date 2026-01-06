@@ -13,6 +13,11 @@ import win32print
 import win32con
 import random
 from PIL import Image, ImageTk
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 # ----------------- CONFIGURATION -----------------
 
@@ -504,7 +509,7 @@ def clear_fields():
     entry_employee_to_meet.delete(0, tk.END); combo_department.set("")
     entry_visitor_name.focus()
 
-# --- UPDATED BACKGROUND FUNCTION (Full Visibility + Auto-Resizing) ---
+# --- BACKGROUND FUNCTION ---
 def setup_background(window_root):
     if not os.path.exists("background.png"): return
     try:
@@ -532,60 +537,86 @@ def open_search_window():
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
     search_win.title("مشاهده و جستجوی سوابق")
-    search_win.geometry("1150x700")
-    
+    search_win.geometry("1200x750")
+
+    # --- FILTER FRAME ---
     search_frame = ttk.LabelFrame(search_win, text="فیلترهای جستجو", padding=(10, 10))
     search_frame.pack(fill=tk.X, padx=10, pady=5)
-    
+
     ttk.Label(search_frame, text=": نام مهمان").grid(row=0, column=5, sticky=tk.E, padx=(15, 5), pady=5)
     entry_search_name = ttk.Entry(search_frame, justify='right')
     entry_search_name.grid(row=0, column=4, sticky=tk.EW, padx=5, pady=5)
+
     ttk.Label(search_frame, text=": کد ملی").grid(row=0, column=3, sticky=tk.E, padx=(15, 5), pady=5)
     entry_search_nid = ttk.Entry(search_frame, justify='right')
     entry_search_nid.grid(row=0, column=2, sticky=tk.EW, padx=5, pady=5)
-    
+
     ttk.Label(search_frame, text=": تاریخ").grid(row=1, column=5, sticky=tk.E, padx=(15, 5), pady=5)
-    
+
     days = [str(i) for i in range(1, 32)]
     combo_day = ttk.Combobox(search_frame, values=[""] + days, justify='center', width=3, state='readonly')
     combo_day.grid(row=1, column=4, sticky=tk.E, padx=(0, 5))
-    
+
     combo_month = ttk.Combobox(search_frame, values=[""] + PERSIAN_MONTHS, justify='center', width=10, state='readonly')
     combo_month.grid(row=1, column=4, sticky=tk.E, padx=(0, 55))
-    
+
     years = [str(i) for i in range(1400, 1411)] 
     combo_year = ttk.Combobox(search_frame, values=[""] + years, justify='center', width=5, state='readonly')
     combo_year.grid(row=1, column=4, sticky=tk.W, padx=(0, 0))
-    
+
     ttk.Label(search_frame, text=": واحد").grid(row=1, column=3, sticky=tk.E, padx=(15, 5), pady=5)
-    combo_search_dept = ttk.Combobox(search_frame, values=[""] + DEPARTMENT_LIST, justify='right', state='readonly'); combo_search_dept.grid(row=1, column=2, sticky=tk.EW, padx=5, pady=5)
+    combo_search_dept = ttk.Combobox(search_frame, values=[""] + DEPARTMENT_LIST, justify='right', state='readonly')
+    combo_search_dept.grid(row=1, column=2, sticky=tk.EW, padx=5, pady=5)
+
     search_frame.columnconfigure(2, weight=1); search_frame.columnconfigure(4, weight=1)
-    
-    tree_frame = ttk.Frame(search_win, padding=(10, 5)); tree_frame.pack(expand=True, fill=tk.BOTH)
+
+    # --- TREEVIEW (TABLE) SETUP ---
+    tree_frame = ttk.Frame(search_win, padding=(10, 5))
+    tree_frame.pack(expand=True, fill=tk.BOTH)
+
+    v_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL)
+    h_scroll = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL)
+
     columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time")
-    
-    style.configure("Custom.Treeview", font=(FONT_TABLE, 13, "bold"), rowheight=35)
+
+    style.configure("Custom.Treeview", font=(FONT_TABLE, 12, "bold"), rowheight=35)
     style.configure("Custom.Treeview.Heading", font=(FONT_MAIN, 12))
 
-    tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview")
-    headings = {"id": "شماره", "visitor_name": "نام مهمان", "national_id": "کد ملی", "employee_to_meet": "ملاقات شونده", "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج"}
-    for col, text in headings.items(): tree.heading(col, text=text)
-    for col in columns: tree.column(col, anchor=tk.CENTER)
-    widths = {"id": 60, "visitor_name": 150, "national_id": 100, "employee_to_meet": 150, "department": 120, "entry_time": 80, "shamsi_date": 100, "exit_time": 80}
-    for col, width in widths.items(): tree.column(col, width=width)
+    tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview", 
+                        yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
     
-    scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
-    tree.configure(yscrollcommand=scrollbar.set); scrollbar.pack(side=tk.RIGHT, fill=tk.Y); tree.pack(expand=True, fill=tk.BOTH)
+    # Config Scrollbars
+    v_scroll.config(command=tree.yview)
+    v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    h_scroll.config(command=tree.xview)
+    h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    tree.pack(expand=True, fill=tk.BOTH)
 
-    def populate_tree(records):
-        for i in tree.get_children(): tree.delete(i)
-        for record in records:
-            display_record = (record[0], record[1], record[2], record[3], record[4], datetime.strptime(record[5], "%Y-%m-%d %H:%M:%S").strftime("%H:%M"), record[6] or "", record[7] or "")
-            tree.insert("", tk.END, values=display_record)
-            
-    def fetch_and_display_records(filters=None):
-        if filters is None: filters = {}
-        conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+    headings = {
+        "id": "شماره", 
+        "visitor_name": "نام مهمان", 
+        "national_id": "کد ملی", 
+        "employee_to_meet": "ملاقات شونده", 
+        "department": "واحد", 
+        "entry_time": "ساعت ورود", 
+        "shamsi_date": "تاریخ ورود", 
+        "exit_time": "ساعت خروج"
+    }
+
+    for col, text in headings.items(): tree.heading(col, text=text)
+
+    tree.column("id", width=60, anchor=tk.CENTER, minwidth=50)
+    tree.column("visitor_name", width=180, anchor=tk.E, minwidth=150) 
+    tree.column("national_id", width=110, anchor=tk.CENTER, minwidth=100)
+    tree.column("employee_to_meet", width=160, anchor=tk.E, minwidth=140)
+    tree.column("department", width=140, anchor=tk.E, minwidth=120)
+    tree.column("entry_time", width=80, anchor=tk.CENTER, minwidth=70)
+    tree.column("shamsi_date", width=100, anchor=tk.CENTER, minwidth=90)
+    tree.column("exit_time", width=80, anchor=tk.CENTER, minwidth=70)
+
+    # --- CORE FUNCTIONS ---
+    def get_query_and_params(filters):
         query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors WHERE 1=1"
         params = []
         if filters.get("name"): query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
@@ -601,91 +632,112 @@ def open_search_window():
         if d:
             d_padded = d.zfill(2)
             query += " AND shamsi_date LIKE ?"; params.append(f"%/{d_padded}")
-        
-        query += " ORDER BY id DESC"; cursor.execute(query, params); populate_tree(cursor.fetchall()); conn.close()
+        return query, params
 
-    def search_action(): fetch_and_display_records({"name": entry_search_name.get(), "nid": entry_search_nid.get(), "year": combo_year.get(), "month_name": combo_month.get(), "day": combo_day.get(), "dept": combo_search_dept.get()})
+    def populate_tree(records):
+        for i in tree.get_children(): tree.delete(i)
+        for record in records:
+            # Format display time (HH:MM)
+            try:
+                dt_obj = datetime.strptime(record[5], "%Y-%m-%d %H:%M:%S")
+                display_time = dt_obj.strftime("%H:%M")
+            except: display_time = record[5] # Fallback
+            
+            display_record = (record[0], record[1], record[2], record[3], record[4], display_time, record[6] or "", record[7] or "")
+            tree.insert("", tk.END, values=display_record)
+
+    def fetch_and_display_records(filters=None):
+        if filters is None: filters = {}
+        conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+        query, params = get_query_and_params(filters)
+        query += " ORDER BY id DESC"
+        cursor.execute(query, params)
+        populate_tree(cursor.fetchall())
+        conn.close()
+
+    def search_action(): 
+        fetch_and_display_records({"name": entry_search_name.get(), "nid": entry_search_nid.get(), "year": combo_year.get(), "month_name": combo_month.get(), "day": combo_day.get(), "dept": combo_search_dept.get()})
+
     def reset_action():
         entry_search_name.delete(0, tk.END); entry_search_nid.delete(0, tk.END)
-        combo_year.set(""); combo_month.set(""); combo_day.set(""); combo_search_dept.set(""); fetch_and_display_records({})
+        combo_year.set(""); combo_month.set(""); combo_day.set(""); combo_search_dept.set("")
+        fetch_and_display_records({})
 
-    # --- POPUP LOGIC FOR EXIT TIME ---
+    # --- EXCEL EXPORT ---
+    def export_to_excel():
+        filters = {
+            "name": entry_search_name.get(), "nid": entry_search_nid.get(),
+            "year": combo_year.get(), "month_name": combo_month.get(),
+            "day": combo_day.get(), "dept": combo_search_dept.get()
+        }
+        conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+        query, params = get_query_and_params(filters)
+        query += " ORDER BY id DESC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        if not rows:
+            messagebox.showwarning("هشدار", "رکوردی برای خروجی گرفتن وجود ندارد")
+            return
+
+        columns_export = ["شناسه", "نام مهمان", "کد ملی", "ملاقات شونده", "واحد", "زمان ورود (میلادی)", "تاریخ شمسی", "ساعت خروج"]
+        try:
+            df = pd.DataFrame(rows, columns=columns_export)
+            file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")], title="ذخیره فایل اکسل")
+            if file_path:
+                df.to_excel(file_path, index=False)
+                messagebox.showinfo("موفق", f"فایل اکسل ذخیره شد:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("خطا", f"خطا در ایجاد فایل اکسل:\n{e}")
+
+    # --- EXIT TIME POPUP ---
     def on_tree_double_click(event):
         selected_item = tree.selection()
         if not selected_item: return
         item_values = tree.item(selected_item, "values")
-        visitor_id = item_values[0]
-        visitor_name = item_values[1]
-        entry_shamsi_date = item_values[6]
-        existing_exit_time = item_values[7]
+        visitor_id, visitor_name, entry_shamsi_date, existing_exit = item_values[0], item_values[1], item_values[6], item_values[7]
 
-        if existing_exit_time and existing_exit_time.strip():
-             messagebox.showerror("خطا", "ساعت خروج برای این مهمان ثبت شده و امکان ثبت ساعت جدید نمی باشد!", parent=search_win)
-             return
+        if existing_exit and existing_exit.strip():
+            messagebox.showerror("خطا", "ساعت خروج قبلاً ثبت شده است", parent=search_win); return
 
         popup = tk.Toplevel(search_win)
-        popup.title("ثبت خروج")
-        popup.geometry("400x250")
-        popup.resizable(False, False)
-        try: popup.iconbitmap('app_icon.ico')
-        except: pass
+        popup.title("ثبت خروج"); popup.geometry("350x200")
         x = search_win.winfo_x() + (search_win.winfo_width() // 2) - 175
-        y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 90
+        y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 100
         popup.geometry(f"+{x}+{y}")
-
-        tk.Label(popup, text=f":ثبت خروج برای\n{visitor_name}", font=(FONT_MAIN, 13, "bold")).pack(pady=10)
-        tk.Label(popup, text="ساعت خروج برای مهمان انتخاب شده ثبت شود؟", font=(FONT_MAIN, 12)).pack(pady=5)
-
-        def confirm_exit():
-            # --- DATE VALIDATION CHECK ---
-            current_shamsi_date = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+        
+        tk.Label(popup, text=f"ثبت خروج برای: {visitor_name}", font=(FONT_MAIN, 12, "bold")).pack(pady=20)
+        
+        def confirm():
+            current_shamsi = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+            if entry_shamsi_date != current_shamsi:
+                messagebox.showerror("خطا", "ثبت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup); return
             
-            if entry_shamsi_date != current_shamsi_date:
-                messagebox.showerror("خطا", ".ثبت ساعت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup)
-                return
-            # -----------------------------
-
-            exit_time_str = datetime.now().strftime("%H:%M")
             try:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
+                conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
+                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (datetime.now().strftime("%H:%M"), visitor_id))
                 conn.commit(); conn.close()
-                popup.destroy()
-                search_action()
-                messagebox.showinfo("موفق", "ساعت خروج با موفقیت ثبت شد", parent=search_win)
-            except Exception as e:
-                messagebox.showerror("خطا", f"خطا در ثبت ساعت خروج: {e}", parent=search_win)
+                popup.destroy(); search_action()
+                messagebox.showinfo("موفق", "خروج ثبت شد", parent=search_win)
+            except Exception as e: messagebox.showerror("Error", str(e))
 
-        btn_frame = tk.Frame(popup)
-        btn_frame.pack(pady=20)
-        tk.Button(btn_frame, text="بله", bg=GREEN_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=confirm_exit).pack(side=tk.RIGHT, padx=10)
-        tk.Button(btn_frame, text="خیر", bg=RED_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=popup.destroy).pack(side=tk.RIGHT, padx=10)
-
-
-        def confirm_exit():
-            exit_time_str = datetime.now().strftime("%H:%M")
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
-                conn.commit(); conn.close()
-                popup.destroy()
-                search_action()
-                messagebox.showinfo("موفق", "ساعت خروج با موفقیت ثبت شد", parent=search_win)
-            except Exception as e:
-                messagebox.showerror("خطا", f"خطا در ثبت ساعت خروج: {e}", parent=search_win)
-
-        btn_frame = tk.Frame(popup)
-        btn_frame.pack(pady=20)
-        tk.Button(btn_frame, text="بله", bg=GREEN_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=confirm_exit).pack(side=tk.RIGHT, padx=10)
-        tk.Button(btn_frame, text="خیر", bg=RED_COLOR, fg="white", width=10, font=(FONT_MAIN, 12, "bold"), command=popup.destroy).pack(side=tk.RIGHT, padx=10)
+        btn_f = tk.Frame(popup); btn_f.pack(pady=10)
+        tk.Button(btn_f, text="تایید خروج", bg=GREEN_COLOR, fg="white", width=12, command=confirm).pack(side=tk.RIGHT, padx=5)
+        tk.Button(btn_f, text="انصراف", bg=RED_COLOR, fg="white", width=12, command=popup.destroy).pack(side=tk.RIGHT, padx=5)
 
     tree.bind("<Double-1>", on_tree_double_click)
+
+    # --- BUTTONS ---
     buttons_frame = ttk.Frame(search_win, padding=(10, 10)); buttons_frame.pack(fill=tk.X)
-    tk.Button(buttons_frame, text="جستجو", command=search_action, bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12), activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
-    tk.Button(buttons_frame, text="نمایش همه", command=reset_action, font=(FONT_MAIN, 12), relief="flat", borderwidth=0, width=12).pack(side=tk.RIGHT, padx=5, ipady=2)
+    
+    tk.Button(buttons_frame, text="جستجو", command=search_action, bg=BLUE_COLOR, fg="white", font=(FONT_MAIN, 12), width=10).pack(side=tk.RIGHT, padx=5)
+    tk.Button(buttons_frame, text="نمایش همه", command=reset_action, font=(FONT_MAIN, 12), width=10).pack(side=tk.RIGHT, padx=5)
+    
+    tk.Button(buttons_frame, text="خروجی اکسل", command=export_to_excel, bg="#2E7D32", fg="white", font=(FONT_MAIN, 12, "bold"), width=15).pack(side=tk.LEFT, padx=5)
+
     reset_action()
+
 
 # --- Main Application Setup ---
 app = tk.Tk()
