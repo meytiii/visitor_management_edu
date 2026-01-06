@@ -50,6 +50,58 @@ PERSIAN_MONTHS = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
+CULTURAL_MESSAGES = [
+    # --- Quran & Hadith ---
+    "«اللهم عجل لولیک الفرج»",
+    "«الا بذکر الله تطمئن القلوب»",
+    "پیامبر اکرم (ص): ز گهواره تا گور دانش بجوی",
+    "پیامبر اکرم (ص): دو نعمت مجهولند: سلامت و امنیت",
+    "امام علی (ع): هر کس کلمه‌ای به من بیاموزد، مرا بنده خود کرده است",
+    "امام علی (ع): فرصت‌ها مانند ابر می‌گذرند، آن‌ها را دریابید",
+    "امام صادق (ع): امانت‌داری و راستگویی، کلید رزق و روزی است",
+    "امام حسین (ع): نیاز مردم به شما از نعمت‌های خدا بر شماست",
+    "امام علی (ع): زینت علم، فروتنی است",
+    "پیامبر اکرم (ص): معلمی شغل انبیاست",
+
+    # --- Imam Khomeini (RA) ---
+    "امام خمینی (ره): عالم محضر خداست، در محضر خدا معصیت نکنید",
+    "امام خمینی (ره): معلم امانت‌داری است که انسان امانت اوست",
+    "امام خمینی (ره): دبستان‌ها را دریابید که دانشگاه‌ها دیر است",
+    "امام خمینی (ره): آموزش و پرورش کارخانه‌ی انسان‌سازی است",
+    "امام خمینی (ره): انتظار فرج، انتظار قدرت اسلام است",
+
+    # --- Supreme Leader (Ayatollah Khamenei) ---
+    "مقام معظم رهبری: زنده نگه داشتن یاد شهدا کمتر از شهادت نیست",
+    "مقام معظم رهبری: امنیت رکن اساسی پیشرفت کشور است",
+    "مقام معظم رهبری: خدمت به مردم، بزرگترین مبارزه با آمریکاست",
+    "مقام معظم رهبری: معلمان، افسران سپاه پیشرفت کشور هستند",
+    "مقام معظم رهبری: آموزش و پرورش کانون خلق دنیای آینده است",
+    "مقام معظم رهبری: هزینه کردن در آموزش و پرورش، سرمایه‌گذاری است",
+    "مقام معظم رهبری: حراست، چشم بینا و گوش شنوای سازمان است",
+    "مقام معظم رهبری: مدرسه، سلول بنیادی تحول در کشور است",
+
+    # --- Martyr Morteza Motahhari (Education) ---
+    "شهید مطهری: معلم باید نیروی فکری متعلم را پرورش دهد",
+    "شهید مطهری: ستایشگر معلمی هستم که اندیشیدن را به من بیاموزد",
+
+    # --- General Education & Security Values ---
+    "«اداره کل آموزش و پرورش استان همدان - اداره حراست»",
+    "تکریم ارباب رجوع، وظیفه شرعی و قانونی ماست",
+    "حفظ اسرار و آبروی مومن، از واجبات است",
+    "مدرسه قوی، ایران قوی",
+    "هر دانش‌آموز، یک امید برای آینده ایران اسلامی",
+    "رعایت حجاب و عفاف، ضامن سلامت جامعه است",
+    "نظم و انضباط اداری، نشانه تعهد کاری است",
+    "با لبخند پاسخگوی مراجعین محترم باشیم",
+    "خوش آمدید - با آرزوی روزی پربار برای شما",
+    "«سامانه مدیریت هوشمند مراجعین»",
+    "شهید رجایی: معلمی شغل نیست، معلمی عشق است",
+    "سردار دل‌ها حاج قاسم سلیمانی: ما ملت امام حسینیم",
+    "حراست؛ مشاور امین و یاور مدیران",
+    "صیانت از کرامت انسانی، رسالت اصلی حراست است",
+    "فرزندان خود را به سلاح علم و ایمان مجهز کنید"
+]
+
 DEFAULT_DEV_PASSWORD = "herasat_edu@!" 
 
 GREEN_COLOR = "#4CAF50"
@@ -583,10 +635,31 @@ def focus_next_widget(event):
 def validate_numeric(text):
     return text == "" or text.isdigit()
 
-def show_status(message, color="black", duration=4000):
-    """Updates the status bar and auto-clears it after 'duration' ms."""
-    status_bar.config(text=message, fg=color)
-    app.after(duration, lambda: status_bar.config(text="آماده به کار", fg="black"))
+# --- STATUS BAR LOGIC ---
+
+def cycle_cultural_messages():
+    """Updates the status bar with a random quote every 20 seconds."""
+    current_color = status_bar.cget("fg")
+    
+    if current_color == "#555555": 
+        quote = random.choice(CULTURAL_MESSAGES)
+        status_bar.config(text=f"  {quote}", fg="#555555")
+    
+    app.after(20000, cycle_cultural_messages)
+
+def show_status(message, color="black", duration=5000):
+    """
+    Displays a priority message (Success/Error).
+    Stays for 'duration' (5s), then immediately switches back to a random quote.
+    """
+    status_bar.config(text=f"  {message}", fg=color)
+    
+    def return_to_quotes():
+        quote = random.choice(CULTURAL_MESSAGES)
+        status_bar.config(text=f"  {quote}", fg="#555555")
+    
+    app.after(duration, return_to_quotes)
+
 
 
 def submit_visitor():
@@ -1058,20 +1131,25 @@ except NameError: pass
 
 if __name__ == "__main__":
     setup_database()
-
-    # --- STATUS BAR ---
+    
+    # --- STATUS BAR WIDGET ---
     status_bar = tk.Label(
         app, 
-        text="آماده به کار", 
+        text="", 
         bd=1, 
         relief=tk.SUNKEN, 
         anchor=tk.E, 
         font=(FONT_MAIN, 11), 
         bg="#E0E0E0",
-        padx=10
+        padx=10,
+        fg="#555555"
     )
     status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    app.after(4000, lambda: status_bar.config(text=""))
+    status_bar.config(text="  با سلام - به سامانه مدیریت مراجعین (اداره حراست) خوش آمدید")
+
+    app.after(30000, cycle_cultural_messages)
 
     app.mainloop()
+
+
