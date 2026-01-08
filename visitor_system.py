@@ -21,7 +21,7 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.6.1"
+APP_VERSION = "1.6.2"
 
 class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, selection_callback=None, **kwargs):
@@ -939,7 +939,7 @@ def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
 def clear_fields():
     entry_visitor_name.delete(0, tk.END); entry_national_id.delete(0, tk.END)
     entry_employee_to_meet.delete(0, tk.END); combo_department.set("")
-    entry_visitor_name.focus()
+    entry_national_id.focus()
 
 # --- BACKGROUND FUNCTION ---
 def setup_background(window_root):
