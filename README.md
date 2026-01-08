@@ -1,5 +1,5 @@
 # Visitor Management System (Security Dept) | سیستم مدیریت ورود و خروج
-
+![background image](background.png)
 A lightweight, user-friendly Desktop Application designed for security guards at the **Education Department of Hamedan (اداره کل آموزش و پرورش استان همدان)** to track visitor entries and exits efficiently.
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
