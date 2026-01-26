@@ -21,7 +21,52 @@ import arabic_reshaper
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.6.2"
+APP_VERSION = "1.6.3"
+
+class RoundedButton(tk.Canvas):
+    def __init__(self, parent, text, command=None,
+                 width=260, height=44,
+                 radius=22,
+                 bg="#1976D2",
+                 hover_bg="#1565C0",
+                 fg="white",
+                 font=("Tahoma", 11, "bold")):
+
+        super().__init__(parent, width=width, height=height,
+                         bg=parent["bg"], highlightthickness=0)
+
+        self.command = command
+        self.bg = bg
+        self.hover_bg = hover_bg
+
+        self.rect = self.create_polygon(
+            radius, 0,
+            width-radius, 0,
+            width, 0,
+            width, radius,
+            width, height-radius,
+            width, height,
+            width-radius, height,
+            radius, height,
+            0, height,
+            0, height-radius,
+            0, radius,
+            0, 0,
+            smooth=True,
+            fill=bg,
+            outline=""
+        )
+
+        self.text_item = self.create_text(
+            width//2, height//2,
+            text=text, fill=fg, font=font
+        )
+
+        self.bind("<Enter>", lambda e: self.itemconfig(self.rect, fill=hover_bg))
+        self.bind("<Leave>", lambda e: self.itemconfig(self.rect, fill=bg))
+        self.bind("<Button-1>", lambda e: command() if command else None)
+
+
 
 class AutocompleteEntry(ttk.Entry):
     def __init__(self, master, completevalues=None, selection_callback=None, **kwargs):
@@ -735,29 +780,103 @@ def show_heatmap_analytics():
 
     update_chart()
 
-
-
 def open_developer_mode():
     dev_win = tk.Toplevel(app)
     dev_win.title("پنل مدیریت")
     dev_win.geometry("400x680")
-    try: dev_win.iconbitmap('app_icon.ico')
-    except: pass
+    try:
+        dev_win.iconbitmap('app_icon.ico')
+    except:
+        pass
     dev_win.configure(bg=BLUE_COLOR)
-    
-    tk.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 14, "bold"), bg=BLUE_COLOR, fg="white").pack(pady=20)
-    
-    tk.Button(dev_win, text="افزودن ۱۰۰ رکورد آزمایشی", command=add_dummy_data, bg="white", fg=BLUE_COLOR, font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    tk.Button(dev_win, text="پاکسازی کامل دیتابیس", command=delete_all_records, bg=RED_COLOR, fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    tk.Button(dev_win, text="تغییر رمز عبور", command=lambda: change_password_ui(dev_win), bg="#FF9800", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    tk.Button(dev_win, text="تعداد ورودی/خروجی های ثبت شده", command=lambda: show_daily_stats_ui(dev_win), bg="#673AB7", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    
-    tk.Button(dev_win, text="نمودار تحلیل ترافیک (Heatmap)", command=show_heatmap_analytics, bg="#E91E63", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
 
-    tk.Button(dev_win, text="تهیه نسخه پشتیبان (Backup)", command=create_backup, bg="#009688", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    tk.Button(dev_win, text="بازیابی اطلاعات (Import)", command=restore_backup, bg="#795548", fg="white", font=(FONT_MAIN, 12, "bold"), relief="flat", padx=20, pady=5).pack(pady=5)
-    
-    tk.Label(dev_win, text="⚠️ مخصوص راهبر سیستم و پشتیبانی", font=(FONT_MAIN, 10), bg=BLUE_COLOR, fg="#E0E0E0").pack(side=tk.BOTTOM, pady=10)
+    tk.Label(
+        dev_win,
+        text="ابزارهای مدیریت سیستم",
+        font=(FONT_MAIN, 14, "bold"),
+        bg=BLUE_COLOR,
+        fg="white"
+    ).pack(pady=20)
+
+    # --- Buttons ---
+
+    RoundedButton(
+        dev_win,
+        text="افزودن ۱۰۰ رکورد آزمایشی",
+        command=add_dummy_data,
+        bg=GREEN_COLOR,
+        hover_bg=GREEN_ACTIVE_COLOR,
+        font=(FONT_MAIN, 14),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="پاکسازی کامل دیتابیس",
+        command=delete_all_records,
+        bg=RED_COLOR,
+        hover_bg=RED_ACTIVE_COLOR,
+        font=(FONT_MAIN, 14),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="تغییر رمز عبور",
+        command=lambda: change_password_ui(dev_win),
+        bg="#FF9800",
+        hover_bg="#F57C00",
+        font=(FONT_MAIN, 13),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="تعداد ورودی/خروجی های ثبت شده",
+        command=lambda: show_daily_stats_ui(dev_win),
+        bg="#673AB7",
+        hover_bg="#5E35B1",
+        font=(FONT_MAIN, 13),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="نمودار تحلیل ترافیک",
+        command=show_heatmap_analytics,
+        bg="#E91E63",
+        hover_bg="#D81B60",
+        font=(FONT_MAIN, 13),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="تهیه نسخه پشتیبان",
+        command=create_backup,
+        bg="#009688",
+        hover_bg="#00796B",
+        font=(FONT_MAIN, 13),
+        width=250
+    ).pack(pady=6)
+
+    RoundedButton(
+        dev_win,
+        text="بازیابی اطلاعات",
+        command=restore_backup,
+        bg="#795548",
+        hover_bg="#6D4C41",
+        font=(FONT_MAIN, 13),
+        width=250
+    ).pack(pady=6)
+
+    tk.Label(
+        dev_win,
+        text="⚠️ مخصوص راهبر سیستم و پشتیبانی",
+        font=(FONT_MAIN, 10),
+        bg=BLUE_COLOR,
+        fg="#E0E0E0"
+    ).pack(side=tk.BOTTOM, pady=10)
 
 
 def focus_next_widget(event):
@@ -1410,14 +1529,34 @@ card_frame.grid_columnconfigure(0, weight=1)
 btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
 btn_frame.grid(row=5, column=0, columnspan=2, pady=(30, 20), sticky="ew")
 
-submit_button = tk.Button(btn_frame, text="ثبت و چاپ رسید", command=submit_visitor, bg=GREEN_COLOR, fg="white", activebackground=GREEN_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 13, "bold"), relief="flat", borderwidth=0)
-submit_button.pack(fill="x", padx=30, pady=5)
+RoundedButton(
+    btn_frame,
+    text="ثبت و چاپ رسید",
+    command=submit_visitor,
+    bg=GREEN_COLOR,
+    hover_bg=GREEN_ACTIVE_COLOR,
+    font=(FONT_MAIN, 13, "bold")
+).pack(pady=6)
 
-search_db_button = tk.Button(btn_frame, text="مشاهده و جستجوی سوابق", command=open_search_window, bg=BLUE_COLOR, fg="white", activebackground=BLUE_ACTIVE_COLOR, activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
-search_db_button.pack(fill="x", padx=30, pady=5)
+RoundedButton(
+    btn_frame,
+    text="مشاهده و جستجوی سوابق",
+    command=open_search_window,
+    bg=BLUE_COLOR,
+    hover_bg=BLUE_ACTIVE_COLOR,
+    font=(FONT_MAIN, 12)
+).pack(pady=6)
 
-help_button = tk.Button(btn_frame, text="راهنما", command=show_help_popup, bg="#607D8B", fg="white", activebackground="#546E7A", activeforeground="white", font=(FONT_MAIN, 12), relief="flat", borderwidth=0)
-help_button.pack(fill="x", padx=30, pady=5)
+
+RoundedButton(
+    btn_frame,
+    text="راهنما",
+    command=show_help_popup,
+    bg="#607D8B",
+    hover_bg="#546E7A",
+    font=(FONT_MAIN, 12)
+).pack(pady=6)
+
 
 
 #--- MENU BAR SETUP ---
