@@ -19,7 +19,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import arabic_reshaper
 from bidi.algorithm import get_display
-
+from tkinter import simpledialog
 
 # ----------------- CONFIGURATION -----------------
 APP_VERSION = "1.6.4"
@@ -665,37 +665,6 @@ def show_heatmap_analytics():
     chart_container = tk.Frame(analytics_win, bg="white")
     chart_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-def show_heatmap_analytics():
-    analytics_win = tk.Toplevel(app)
-    analytics_win.title("تحلیل آماری تردد")
-    analytics_win.geometry("900x650")
-    try: analytics_win.iconbitmap('app_icon.ico')
-    except: pass
-    analytics_win.configure(bg="white")
-
-    filter_frame = tk.Frame(analytics_win, bg="#E3F2FD", bd=1, relief="solid")
-    filter_frame.pack(fill=tk.X, padx=10, pady=10)
-
-    tk.Label(filter_frame, text=":فیلتر زمانی", bg="#E3F2FD", font=(FONT_MAIN, 12, "bold")).pack(side=tk.RIGHT, padx=10, pady=10)
-
-    years = [str(i) for i in range(1400, 1411)]
-    days = [str(i) for i in range(1, 32)]
-
-    cb_day = ttk.Combobox(filter_frame, values=[""] + days, width=3, state="readonly", justify='center')
-    cb_day.pack(side=tk.RIGHT, padx=2)
-    tk.Label(filter_frame, text="روز", bg="#E3F2FD").pack(side=tk.RIGHT)
-
-    cb_month = ttk.Combobox(filter_frame, values=[""] + PERSIAN_MONTHS, width=10, state="readonly", justify='center')
-    cb_month.pack(side=tk.RIGHT, padx=2)
-    tk.Label(filter_frame, text="ماه", bg="#E3F2FD").pack(side=tk.RIGHT)
-
-    cb_year = ttk.Combobox(filter_frame, values=[""] + years, width=5, state="readonly", justify='center')
-    cb_year.pack(side=tk.RIGHT, padx=2)
-    tk.Label(filter_frame, text="سال", bg="#E3F2FD").pack(side=tk.RIGHT)
-
-    chart_container = tk.Frame(analytics_win, bg="white")
-    chart_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
     def update_chart():
         for widget in chart_container.winfo_children():
             widget.destroy()
@@ -890,10 +859,75 @@ def focus_next_widget(event):
     return("break")
 
 
-def validate_numeric(text):
-    return text == "" or text.isdigit()
+def validate_national_id(nid):
+    """
+    Validate Iranian national ID (کد ملی)
+    Returns: (is_valid, error_message)
+    """
+    if not nid:
+        return False, "کد ملی نمی‌تواند خالی باشد"
+    
+    if not nid.isdigit():
+        return False, "کد ملی باید فقط شامل اعداد باشد"
+    
+    if len(nid) != 10:
+        return False, "کد ملی باید ۱۰ رقمی باشد"
+    
+    if len(set(nid)) == 1:
+        return False, "کد ملی معتبر نیست (همه ارقام یکسان)"
+    
+    try:
+        control_digit = int(nid[9])
+        
+        sum_val = 0
+        for i in range(9):
+            sum_val += int(nid[i]) * (10 - i)
+        
+        remainder = sum_val % 11
+        
+        if remainder < 2:
+            valid = (remainder == control_digit)
+        else:
+            valid = ((11 - remainder) == control_digit)
+        
+        if not valid:
+            return False, "کد ملی وارد شده معتبر نیست"
+        
+        return True, ""
+        
+    except Exception as e:
+        return False, f"خطا در اعتبارسنجی کد ملی: {str(e)}"
 
-# --- STATUS BAR LOGIC ---
+
+def validate_visitor_name_on_exit():
+    """Validate visitor name when field loses focus"""
+    name = entry_visitor_name.get().strip()
+    
+    if name and len(name) > 0:
+        is_valid, error_msg = validate_persian_name(name)
+        
+        if not is_valid and len(name) >= 2:
+            entry_visitor_name.configure(foreground="red")
+            show_status(f"⚠️ {error_msg}", "#D32F2F", duration=3000)
+        else:
+            entry_visitor_name.configure(foreground="black")
+
+def validate_numeric(text):
+    """
+    Basic numeric validation for entry widget
+    Also prevents more than 10 digits
+    """
+    if text == "":
+        return True
+    
+    if not text.isdigit():
+        return False
+    
+    if len(text) > 10:
+        return False
+    
+    return True
+
 
 # Global variable to track the random quote timer
 cycle_timer_id = None
@@ -962,18 +996,94 @@ def on_national_id_enter(event):
     return "break"
 
 
-
+def validate_persian_name(name):
+    """
+    Validate Persian/Arabic names
+    Allows Persian/Arabic letters, space, and dot
+    """
+    import re
+    
+    persian_pattern = re.compile(r'^[\u0600-\u06FF\uFB8A\u067E\u0686\u06AF\u200C\u200F\.\s]+$')
+    
+    english_pattern = re.compile(r'^[A-Za-z\s\.]+$')
+    
+    name = name.strip()
+    
+    if not name or len(name) < 2:
+        return False, "نام باید حداقل ۲ کاراکتر باشد"
+    
+    has_letter = any(c.isalpha() for c in name)
+    if not has_letter:
+        return False, "نام باید شامل حروف باشد"
+    
+    if not (persian_pattern.match(name) or english_pattern.match(name)):
+        return False, "نام باید فقط شامل حروف فارسی/عربی یا انگلیسی باشد"
+    
+    return True, ""
 
 def submit_visitor():
-    visitor_name = entry_visitor_name.get()
-    national_id = entry_national_id.get()
-    employee_to_meet = entry_employee_to_meet.get()
+    visitor_name = entry_visitor_name.get().strip()
+    national_id = entry_national_id.get().strip()
+    employee_to_meet = entry_employee_to_meet.get().strip()
     department = combo_department.get()
 
     if not all([visitor_name, national_id, employee_to_meet, department]):
         messagebox.showwarning("خطا", "لطفاً تمام اطلاعات را وارد کنید")
+        entry_national_id.focus_set() if not national_id else entry_visitor_name.focus_set()
         return
-
+    
+    is_valid, error_msg = validate_national_id(national_id)
+    if not is_valid:
+        response = messagebox.askyesno(
+            "هشدار کد ملی",
+            f"{error_msg}\n\nآیا مطمئن هستید که می‌خواهید ادامه دهید؟\n\n"
+            f"✅ اگر کد ملی درست است، ادامه دهید\n"
+            f"❌ اگر اشتباه وارد کرده‌اید، لغو کنید و اصلاح نمایید"
+        )
+        if not response:
+            entry_national_id.focus_set()
+            entry_national_id.select_range(0, tk.END)
+            return
+    
+    if len(visitor_name) < 3:
+        messagebox.showwarning("خطا", "نام باید حداقل ۳ کاراکتر باشد")
+        entry_visitor_name.focus_set()
+        entry_visitor_name.select_range(0, tk.END)
+        return
+    
+    if len(employee_to_meet) < 3:
+        messagebox.showwarning("خطا", "نام ملاقات شونده باید حداقل ۳ کاراکتر باشد")
+        entry_employee_to_meet.focus_set()
+        entry_employee_to_meet.select_range(0, tk.END)
+        return
+    
+    current_shamsi_date = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id FROM visitors 
+            WHERE national_id = ? 
+            AND employee_to_meet = ? 
+            AND shamsi_date = ?
+            AND (exit_time IS NULL OR exit_time = '')
+            LIMIT 1
+        ''', (national_id, employee_to_meet, current_shamsi_date))
+        duplicate = cursor.fetchone()
+        conn.close()
+        
+        if duplicate:
+            response = messagebox.askyesno(
+                "تکرار ورود",
+                f"آیا مطمئن هستید که می‌خواهید ورود مجدد ثبت کنید؟\n\n"
+                f"کد ملی {national_id} برای ملاقات با {employee_to_meet}\n"
+                f"امروز قبلاً ثبت شده است (ثبت شماره {duplicate[0]})."
+            )
+            if not response:
+                return
+    except:
+        pass
+    
     now = datetime.now()
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
@@ -997,7 +1107,6 @@ def submit_visitor():
 
     except sqlite3.Error as e:
         messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
-
 
 def print_receipt(visitor_id, name, nid, emp, dept, entry_dt, shamsi_date):
     try:
@@ -1331,24 +1440,136 @@ def open_search_window():
 
         popup = tk.Toplevel(search_win)
         popup.title("ثبت خروج")
-        popup.geometry("350x200")
-        x = search_win.winfo_x() + (search_win.winfo_width() // 2) - 175
-        y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 100
+        popup.geometry("500x500")
+        popup.resizable(False, False)
+        
+        try:
+            popup.iconbitmap('app_icon.ico')
+        except:
+            pass
+        
+        x = search_win.winfo_x() + (search_win.winfo_width() // 2) - 250
+        y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 250
         popup.geometry(f"+{x}+{y}")
         
-        tk.Label(popup, text=f"ثبت خروج برای: {visitor_name}", font=(FONT_MAIN, 12, "bold")).pack(pady=20)
+        POPUP_BG_COLOR = "#1E3A5F"
+        CARD_BG_COLOR = "#FFFFFF"
+        popup.configure(bg=POPUP_BG_COLOR)
+        
+        card_frame = tk.Frame(popup, bg=CARD_BG_COLOR, bd=2, relief="ridge")
+        card_frame.place(relx=0.5, rely=0.5, anchor="center", width=460, height=480)
+        
+        header_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
+        header_frame.pack(fill=tk.X, pady=(20, 10))
+        
+        tk.Label(header_frame, text="ثبت خروج", font=(FONT_MAIN, 16, "bold"), 
+                bg=CARD_BG_COLOR, fg="#2E7D32").pack()
+        
+        tk.Label(header_frame, text=f": {visitor_name}", font=(FONT_MAIN, 13), 
+                bg=CARD_BG_COLOR, fg="#37474F").pack()
+        
+        current_shamsi = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+        if entry_shamsi_date != current_shamsi:
+            warning_frame = tk.Frame(card_frame, bg="#FFF3CD", bd=1, relief="solid")
+            warning_frame.pack(fill=tk.X, padx=20, pady=10)
+            tk.Label(warning_frame, text=f"⚠️ تاریخ ورود: {entry_shamsi_date} (امروز نیست!)", 
+                    font=(FONT_MAIN, 10), bg="#FFF3CD", fg="#856404", justify="right").pack(pady=8)
+        
+        time_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
+        time_frame.pack(pady=15)
+        
+        tk.Label(time_frame, text=": ساعت خروج را انتخاب کنید", font=(FONT_MAIN, 12), 
+                bg=CARD_BG_COLOR, fg="#37474F").grid(row=0, column=0, columnspan=5, pady=(0, 15), sticky="e")
+        
+        hours = [str(i).zfill(2) for i in range(7, 21)]
+        hour_var = tk.StringVar(value=datetime.now().strftime("%H"))
+        hour_combo = ttk.Combobox(time_frame, textvariable=hour_var, values=hours, 
+                                width=5, state="readonly", justify='center', font=(FONT_MAIN, 12))
+        hour_combo.grid(row=1, column=0, padx=(0, 5))
+        
+        tk.Label(time_frame, text=":", font=(FONT_MAIN, 14), bg=CARD_BG_COLOR).grid(row=1, column=1, padx=5)
+        
+        minutes = [str(i).zfill(2) for i in range(0, 60, 5)]
+        minute_var = tk.StringVar(value=datetime.now().strftime("%M"))
+        minute_combo = ttk.Combobox(time_frame, textvariable=minute_var, values=minutes, 
+                                width=5, state="readonly", justify='center', font=(FONT_MAIN, 12))
+        minute_combo.grid(row=1, column=2, padx=(5, 15))
+        
+        def set_current_time():
+            now = datetime.now()
+            hour_var.set(now.strftime("%H"))
+            minute_var.set(now.strftime("%M"))
+        
+        current_time_btn = RoundedButton(
+            time_frame,
+            text="زمان فعلی",
+            command=set_current_time,
+            width=120,
+            height=36,
+            radius=18,
+            bg="#1976D2",
+            hover_bg="#1565C0",
+            fg="white",
+            font=(FONT_MAIN, 11)
+        )
+        current_time_btn.grid(row=1, column=4, padx=(20, 0))
+        
+        try:
+            entry_time_only = item_values[5].split(' ')[1][:5] if ' ' in item_values[5] else item_values[5]
+            info_frame = tk.Frame(card_frame, bg="#E3F2FD", bd=1, relief="solid")
+            info_frame.pack(fill=tk.X, padx=20, pady=15)
+            tk.Label(info_frame, text=f"ساعت ورود: {entry_time_only}   |   تاریخ: {entry_shamsi_date}", 
+                    font=(FONT_MAIN, 11), bg="#E3F2FD", fg="#1565C0").pack(pady=8)
+        except:
+            pass
         
         def confirm():
-            current_shamsi = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
+            hour = hour_var.get()
+            minute = minute_var.get()
+            
+            if not hour or not minute:
+                messagebox.showerror("خطا", "لطفاً ساعت و دقیقه را انتخاب کنید", parent=popup)
+                return
+            
+            try:
+                entry_time_str = item_values[5]
+                if ' ' in entry_time_str:
+                    entry_time_only = entry_time_str.split(' ')[1][:5]
+                    entry_hour, entry_minute = map(int, entry_time_only.split(':'))
+                    exit_hour, exit_minute = int(hour), int(minute)
+                    
+                    entry_total = entry_hour * 60 + entry_minute
+                    exit_total = exit_hour * 60 + exit_minute
+                    
+                    if exit_total < entry_total:
+                        response = messagebox.askyesno(
+                            "هشدار",
+                            f"ساعت خروج ({hour}:{minute}) قبل از ساعت ورود ({entry_hour:02d}:{entry_minute:02d}) است.\n\n"
+                            "آیا مطمئن هستید که می‌خواهید ادامه دهید؟",
+                            parent=popup
+                        )
+                        if not response:
+                            return
+            except:
+                pass
             
             if entry_shamsi_date != current_shamsi:
-                messagebox.showerror("خطا", "ثبت خروج فقط در تاریخ ورود امکان‌پذیر است", parent=popup)
-                return
+                response = messagebox.askyesno(
+                    "تأیید تاریخ متفاوت",
+                    f"تاریخ ورود ({entry_shamsi_date}) با امروز ({current_shamsi}) متفاوت است.\n\n"
+                    "آیا مطمئن هستید که می‌خواهید خروج ثبت کنید؟\n"
+                    "(فقط برای تصحیح اطلاعات قبلی استفاده شود)",
+                    parent=popup
+                )
+                if not response:
+                    return
+            
+            exit_time_str = f"{hour}:{minute}"
             
             try:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (datetime.now().strftime("%H:%M"), visitor_id))
+                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time_str, visitor_id))
                 conn.commit()
                 conn.close()
                 
@@ -1358,18 +1579,45 @@ def open_search_window():
                 app.deiconify()
                 app.focus_set()
                 
-                msg = f"✓ زمان خروج برای {visitor_name} (کدملی: {national_id}) با شماره ثبت {visitor_id} با موفقیت ثبت شد"
+                msg = f"✓ زمان خروج {exit_time_str} برای {visitor_name} (کدملی: {national_id}) با موفقیت ثبت شد"
                 show_status(msg, "#2E7D32", duration=10000)
                 
             except Exception as e: 
-                messagebox.showerror("Error", str(e))
-
-        btn_f = tk.Frame(popup)
-        btn_f.pack(pady=10)
-        tk.Button(btn_f, text="تایید خروج", bg=GREEN_COLOR, fg="white", width=12, command=confirm).pack(side=tk.RIGHT, padx=5)
-        tk.Button(btn_f, text="انصراف", bg=RED_COLOR, fg="white", width=12, command=popup.destroy).pack(side=tk.RIGHT, padx=5)
-
-
+                messagebox.showerror("خطا", f"خطا در ثبت خروج:\n{str(e)}", parent=popup)
+        
+        btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
+        btn_frame.pack(pady=20)
+        
+        cancel_btn = RoundedButton(
+            btn_frame,
+            text="انصراف",
+            command=popup.destroy,
+            width=120,
+            height=40,
+            radius=20,
+            bg="#f44336",
+            hover_bg="#d32f2f",
+            fg="white",
+            font=(FONT_MAIN, 12)
+        )
+        cancel_btn.pack(side=tk.RIGHT, padx=15)
+        
+        confirm_btn = RoundedButton(
+            btn_frame,
+            text="تایید خروج",
+            command=confirm,
+            width=120,
+            height=40,
+            radius=20,
+            bg="#4CAF50",
+            hover_bg="#388E3C",
+            fg="white",
+            font=(FONT_MAIN, 12, "bold")
+        )
+        confirm_btn.pack(side=tk.RIGHT, padx=15)
+        
+        hour_combo.focus_set()
+        popup.bind('<Return>', lambda e: confirm())
 
     tree.bind("<Double-1>", on_tree_double_click)
 
@@ -1437,6 +1685,38 @@ def check_returning_visitor(event):
                 entry_visitor_name.insert(0, result[0])
     except: pass
 
+def validate_national_id_on_exit():
+    """Validate national ID when field loses focus - WARN but don't block"""
+    nid = entry_national_id.get().strip()
+    
+    if nid and len(nid) == 10:
+        is_valid, error_msg = validate_national_id(nid)
+        
+        if not is_valid:
+            entry_national_id.configure(foreground="orange")
+            
+            show_status(f"⚠️ {error_msg} (می‌توانید ادامه دهید)", "#FF9800", duration=5000)
+        else:
+            entry_national_id.configure(foreground="green")
+            check_returning_visitor(None)
+    elif nid:
+        entry_national_id.configure(foreground="orange")
+        show_status("⚠️ کد ملی باید ۱۰ رقمی باشد (می‌توانید ادامه دهید)", "#FF9800", duration=5000)
+    else:
+        entry_national_id.configure(foreground="black")
+
+def validate_visitor_name_on_exit():
+    """Validate visitor name when field loses focus"""
+    name = entry_visitor_name.get().strip()
+    
+    if name and len(name) > 0:
+        is_valid, error_msg = validate_persian_name(name)
+        
+        if not is_valid and len(name) >= 2:
+            entry_visitor_name.configure(foreground="red")
+            show_status(f"⚠️ {error_msg}", "#D32F2F", duration=3000)
+        else:
+            entry_visitor_name.configure(foreground="black")
 
 # --- Main Application Setup ---
 app = tk.Tk()
@@ -1506,11 +1786,12 @@ for text, row in labels.items():
 # 1. Create Widgets
 vcmd = (app.register(validate_numeric), '%P')
 entry_national_id = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13), validate='key', validatecommand=vcmd)
-entry_national_id.bind("<FocusOut>", check_returning_visitor)
+entry_national_id.bind("<FocusOut>", lambda e: (check_returning_visitor(e), validate_national_id_on_exit()))
 entry_national_id.bind("<Return>", on_national_id_enter) 
 
 entry_visitor_name = ttk.Entry(card_frame, justify='right', font=(FONT_MAIN, 13))
 entry_visitor_name.bind("<Return>", focus_next_widget)
+entry_visitor_name.bind("<FocusOut>", lambda e: validate_visitor_name_on_exit())
 
 entry_employee_to_meet = AutocompleteEntry(
     card_frame, 
@@ -1627,7 +1908,3 @@ if __name__ == "__main__":
         widget.bind("<FocusOut>", on_focus_out, add="+")
 
     app.mainloop()
-
-
-
-
