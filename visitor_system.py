@@ -1574,13 +1574,14 @@ def open_search_window():
                 conn.close()
                 
                 popup.destroy()
-                search_win.destroy()
                 
-                app.deiconify()
-                app.focus_set()
+                search_action()
                 
-                msg = f"✓ زمان خروج {exit_time_str} برای {visitor_name} (کدملی: {national_id}) با موفقیت ثبت شد"
-                show_status(msg, "#2E7D32", duration=10000)
+                messagebox.showinfo("موفق", f"خروج {visitor_name} در ساعت {exit_time_str} ثبت شد", parent=search_win)
+                
+            except Exception as e: 
+                messagebox.showerror("خطا", f"خطا در ثبت خروج:\n{str(e)}", parent=popup)
+
                 
             except Exception as e: 
                 messagebox.showerror("خطا", f"خطا در ثبت خروج:\n{str(e)}", parent=popup)
