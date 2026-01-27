@@ -18,10 +18,11 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import arabic_reshaper
+from bidi.algorithm import get_display
 
 
 # ----------------- CONFIGURATION -----------------
-APP_VERSION = "1.6.3"
+APP_VERSION = "1.6.4"
 
 class RoundedButton(tk.Canvas):
     def __init__(self, parent, text, command=None,
@@ -626,7 +627,7 @@ def restore_backup():
 def make_farsi(text):
     try:
         import arabic_reshaper
-        from bidi.algorithm import get_display
+        
         reshaped_text = arabic_reshaper.reshape(text)
         return get_display(reshaped_text)
     except ImportError:
