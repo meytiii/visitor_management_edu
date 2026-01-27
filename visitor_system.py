@@ -624,8 +624,13 @@ def restore_backup():
 
 # --- Helper Function for Persian Text in Plots ---
 def make_farsi(text):
-    reshaped_text = arabic_reshaper.reshape(text)
-    return reshaped_text[::-1]
+    try:
+        import arabic_reshaper
+        from bidi.algorithm import get_display
+        reshaped_text = arabic_reshaper.reshape(text)
+        return get_display(reshaped_text)
+    except ImportError:
+        return text
 
 # --- Heatmap Analytics Function ---
 def show_heatmap_analytics():
