@@ -15,24 +15,28 @@ import utils
 import widgets
 
 # --- Configuration & Styles ---
-# We try to detect fonts, assuming root is created when these functions are called
-def get_fonts():
-    try:
-        available_fonts = font.families()
-        main = "B Titr" if "B Titr" in available_fonts else "Tahoma"
-        table = "B Nazanin" if "B Nazanin" in available_fonts else "Tahoma"
-        return main, table
-    except:
-        return "Tahoma", "Tahoma"
+# Default fallback
+FONT_MAIN = "Tahoma"
+FONT_TABLE = "Tahoma"
+_fonts_checked = False
 
-# We access these dynamically inside functions or pass them
-FONT_MAIN, FONT_TABLE = get_fonts()
+def ensure_fonts():
+    """Checks for Persian fonts only when needed (requires Tk root to be active)."""
+    global FONT_MAIN, FONT_TABLE, _fonts_checked
+    if _fonts_checked: return
+    try:
+        available = font.families()
+        if "B Titr" in available: FONT_MAIN = "B Titr"
+        if "B Nazanin" in available: FONT_TABLE = "B Nazanin"
+        _fonts_checked = True
+    except: pass
 
 def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {config.APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
 
 def ask_dev_password(app):
+    ensure_fonts()
     pwd_win = tk.Toplevel(app)
     pwd_win.title("Security Check"); pwd_win.geometry("300x180")
     try: pwd_win.iconbitmap('app_icon.ico')
@@ -56,6 +60,7 @@ def ask_dev_password(app):
     pwd_win.bind('<Return>', lambda e: check())
 
 def change_password_ui(parent_win):
+    ensure_fonts()
     cp_win = tk.Toplevel(parent_win)
     cp_win.title("Change Password"); cp_win.geometry("350x300")
     try: cp_win.iconbitmap('app_icon.ico')
@@ -87,6 +92,7 @@ def change_password_ui(parent_win):
 
 def show_daily_stats_ui(parent_win):
     """Popup to show daily entry/exit counts."""
+    ensure_fonts()
     stats_win = tk.Toplevel(parent_win)
     stats_win.title("آمار تردد")
     stats_win.geometry("400x400")
@@ -156,6 +162,7 @@ def show_daily_stats_ui(parent_win):
     tk.Button(btn_frame, text="محاسبه", command=lambda: calculate(), bg="white", fg=config.BLUE_COLOR, font=(FONT_MAIN, 11, "bold"), relief="flat", width=10).pack(side=tk.LEFT, padx=10)
 
 def show_heatmap_analytics(app):
+    ensure_fonts()
     analytics_win = tk.Toplevel(app)
     analytics_win.title("تحلیل آماری تردد")
     analytics_win.geometry("900x650")
@@ -260,6 +267,7 @@ def show_heatmap_analytics(app):
     update_chart()
 
 def open_shift_log_window(app):
+    ensure_fonts()
     log_win = tk.Toplevel(app)
     log_win.title("دفتر ثبت وقایع و گزارشات")
     log_win.geometry("700x550")
@@ -319,6 +327,7 @@ def open_shift_log_window(app):
     load_logs()
 
 def open_search_window(app):
+    ensure_fonts()
     search_win = tk.Toplevel(app)
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
@@ -665,6 +674,7 @@ def open_search_window(app):
     reset_action()
 
 def open_developer_mode(app):
+    ensure_fonts()
     dev_win = tk.Toplevel(app)
     dev_win.title("پنل مدیریت")
     dev_win.geometry("400x680")
