@@ -7,7 +7,6 @@ import threading  # <--- NEW IMPORT
 from datetime import datetime
 import jdatetime
 from PIL import Image, ImageTk
-from matplotlib.style import available
 
 # Import local modules
 import config
@@ -30,7 +29,7 @@ except Exception: pass
 available_fonts = font.families()
 if "B Titr" in available_fonts: FONT_MAIN = "B Titr"
 else: FONT_MAIN = "Tahoma"
-if "B Nazanin" in available: FONT_TABLE = "B Nazanin"
+if "B Nazanin" in available_fonts: FONT_TABLE = "B Nazanin"
 else: FONT_TABLE = "Tahoma"
 
 style = ttk.Style(app); style.theme_use("vista")
