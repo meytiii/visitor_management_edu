@@ -3,9 +3,11 @@ from tkinter import ttk, messagebox, font
 import sqlite3
 import os
 import random
+import threading  # <--- NEW IMPORT
 from datetime import datetime
 import jdatetime
 from PIL import Image, ImageTk
+from matplotlib.style import available
 
 # Import local modules
 import config
@@ -28,7 +30,7 @@ except Exception: pass
 available_fonts = font.families()
 if "B Titr" in available_fonts: FONT_MAIN = "B Titr"
 else: FONT_MAIN = "Tahoma"
-if "B Nazanin" in available_fonts: FONT_TABLE = "B Nazanin"
+if "B Nazanin" in available: FONT_TABLE = "B Nazanin"
 else: FONT_TABLE = "Tahoma"
 
 style = ttk.Style(app); style.theme_use("vista")
@@ -272,7 +274,15 @@ def submit_visitor():
         visitor_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        printer.print_receipt(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str)
+        
+        # --- NEW: Run printing in a background thread ---
+        print_thread = threading.Thread(
+            target=printer.print_receipt, 
+            args=(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str),
+            daemon=True
+        )
+        print_thread.start()
+        # ------------------------------------------------
         
         clear_fields()
         
