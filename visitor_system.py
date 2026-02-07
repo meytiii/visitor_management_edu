@@ -1581,10 +1581,6 @@ def open_search_window():
                 
             except Exception as e: 
                 messagebox.showerror("خطا", f"خطا در ثبت خروج:\n{str(e)}", parent=popup)
-
-                
-            except Exception as e: 
-                messagebox.showerror("خطا", f"خطا در ثبت خروج:\n{str(e)}", parent=popup)
         
         btn_frame = tk.Frame(card_frame, bg=CARD_BG_COLOR)
         btn_frame.pack(pady=20)
