@@ -274,14 +274,12 @@ def submit_visitor():
         conn.commit()
         conn.close()
         
-        # --- NEW: Run printing in a background thread ---
         print_thread = threading.Thread(
             target=printer.print_receipt, 
             args=(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str),
             daemon=True
         )
         print_thread.start()
-        # ------------------------------------------------
         
         clear_fields()
         
