@@ -15,7 +15,6 @@ import utils
 import widgets
 
 # --- Configuration & Styles ---
-# Default fallback
 FONT_MAIN = "Tahoma"
 FONT_TABLE = "Tahoma"
 _fonts_checked = False
