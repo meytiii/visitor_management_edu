@@ -1,6 +1,39 @@
 import tkinter as tk
 from tkinter import ttk
 
+class RoundedEntry(tk.Canvas):
+    def __init__(self, parent, width=200, height=30, radius=15, 
+                 bg="white", border_color="#E0E0E0", 
+                 text_var=None, show=None, justify='center', font=("Tahoma", 11)):
+        super().__init__(parent, width=width, height=height, 
+                         bg=parent["bg"], highlightthickness=0)
+        self.entry_bg = bg
+        
+        self.create_polygon(
+            radius, 0, width-radius, 0, width, 0, width, radius,
+            width, height-radius, width, height, width-radius, height,
+            radius, height, 0, height, 0, height-radius, 0, radius, 0, 0,
+            smooth=True, fill=bg, outline=border_color, width=1
+        )
+        
+        self.entry = tk.Entry(self, bg=bg, bd=0, highlightthickness=0, 
+                              fg="#333333", justify=justify, font=font,
+                              textvariable=text_var, show=show)
+        
+        self.create_window(width//2, height//2, window=self.entry, width=width-20)
+
+    def get(self):
+        return self.entry.get()
+
+    def delete(self, first, last=tk.END):
+        self.entry.delete(first, last)
+
+    def focus(self):
+        self.entry.focus()
+        
+    def bind(self, sequence=None, func=None, add=None):
+        self.entry.bind(sequence, func, add)
+
 class RoundedButton(tk.Canvas):
     def __init__(self, parent, text, command=None,
                  width=260, height=44,

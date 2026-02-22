@@ -7,6 +7,8 @@ import jdatetime
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
+from PIL import Image, ImageTk
 
 # Import local modules
 import config
@@ -34,60 +36,219 @@ def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {config.APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
 
-def ask_dev_password(app):
+# --- LOGIN SYSTEM ---
+def show_login_screen(app, on_success_callback):
+    """
+    Shows a login window using a Canvas for transparent text over the background image.
+    """
     ensure_fonts()
-    pwd_win = tk.Toplevel(app)
-    pwd_win.title("Security Check"); pwd_win.geometry("300x180")
-    try: pwd_win.iconbitmap('app_icon.ico')
-    except: pass
-    pwd_win.configure(bg=config.BLUE_COLOR)
+    login_win = tk.Toplevel(app)
+    login_win.title("ورود به سیستم")
     
-    x = app.winfo_x() + (app.winfo_width() // 2) - 150
-    y = app.winfo_y() + (app.winfo_height() // 2) - 90
-    pwd_win.geometry(f"+{x}+{y}")
-    tk.Label(pwd_win, text=":رمز عبور را وارد کنید", bg=config.BLUE_COLOR, fg="white", font=(FONT_MAIN, 11)).pack(pady=15)
-    ent_pass = tk.Entry(pwd_win, show="●", justify="center", font=(FONT_MAIN, 11))
-    ent_pass.pack(pady=5); ent_pass.focus()
-    def check():
-        if ent_pass.get() == database.get_current_password():
-            pwd_win.destroy()
-            open_developer_mode(app)
-        else:
-            messagebox.showerror("Access Denied", "رمز عبور اشتباه است", parent=pwd_win)
-            ent_pass.delete(0, tk.END)
-    tk.Button(pwd_win, text="ورود", command=check, bg="white", fg=config.BLUE_COLOR, font=(FONT_MAIN, 10, "bold"), width=10).pack(pady=15)
-    pwd_win.bind('<Return>', lambda e: check())
+    # Window Geometry
+    width, height = 400, 350
+    screen_width = app.winfo_screenwidth()
+    screen_height = app.winfo_screenheight()
+    x = (screen_width // 2) - (width // 2)
+    y = (screen_height // 2) - (height // 2)
+    login_win.geometry(f"{width}x{height}+{x}+{y}")
+    login_win.resizable(False, False)
 
-def change_password_ui(parent_win):
-    ensure_fonts()
-    cp_win = tk.Toplevel(parent_win)
-    cp_win.title("Change Password"); cp_win.geometry("350x300")
-    try: cp_win.iconbitmap('app_icon.ico')
-    except: pass
-    cp_win.configure(bg=config.BLUE_COLOR)
+    # --- CANVAS SETUP (Required for transparent text) ---
+    canvas = tk.Canvas(login_win, width=width, height=height, highlightthickness=0)
+    canvas.pack(fill="both", expand=True)
+
+    # --- BACKGROUND IMAGE ---
+    # Default color if image is missing
+    canvas.configure(bg="#59A552") 
     
-    def create_field(label_text):
-        tk.Label(cp_win, text=label_text, bg=config.BLUE_COLOR, fg="white", font=(FONT_MAIN, 10)).pack(pady=(10, 0))
-        entry = tk.Entry(cp_win, show="●", justify="center", font=(FONT_MAIN, 10))
-        entry.pack(pady=5)
+    if os.path.exists("login.png"):
+        try:
+            pil_image = Image.open("login.png")
+            pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
+            bg_image_obj = ImageTk.PhotoImage(pil_image)
+            
+            # Draw image at (0,0)
+            canvas.create_image(0, 0, image=bg_image_obj, anchor="nw")
+            
+            # Keep reference so it doesn't disappear
+            login_win.bg_image_obj = bg_image_obj 
+        except Exception as e:
+            print(f"Error loading login background: {e}")
+
+    # --- ICON ---
+    try: login_win.iconbitmap('app_icon.ico')
+    except: pass
+
+    # --- DRAWING TEXT (Transparent) ---
+    # Coordinates are (x, y). x=200 is the horizontal center (400/2)
+    
+    # Title
+    canvas.create_text(200, 40, text="سامانه مدیریت مراجعین", fill="#D0F8FF", font=(FONT_MAIN, 16, "bold"))
+    
+    # Username Label
+    canvas.create_text(200, 90, text=":نام کاربری", fill="#FFF9D7", font=(FONT_MAIN, 12))
+    
+    # Username Entry (Placed as a window on the canvas)
+    ent_user = tk.Entry(login_win, justify='center', font=(FONT_MAIN, 12))
+    canvas.create_window(200, 120, window=ent_user, width=200, height=30)
+    
+    # Password Label
+    canvas.create_text(200, 160, text=":رمز عبور", fill="#FFF9D7", font=(FONT_MAIN, 12))
+    
+    # Password Entry
+    ent_pass = tk.Entry(login_win, show="●", justify='center', font=(FONT_MAIN, 12))
+    canvas.create_window(200, 190, window=ent_pass, width=200, height=30)
+    
+    # --- LOGIN LOGIC ---
+    def do_login():
+        u = ent_user.get().strip()
+        p = ent_pass.get().strip()
+        
+        success, role = database.authenticate_user(u, p)
+        
+        if success:
+            login_win.destroy()
+            on_success_callback(u, role)
+        else:
+            messagebox.showerror("خطا", "نام کاربری یا رمز عبور اشتباه است", parent=login_win)
+            ent_pass.delete(0, tk.END)
+
+    # Login Button
+    btn_login = widgets.RoundedButton(
+        login_win, # Note: Parent is still the window, but we place it on canvas
+        text="ورود",
+        command=do_login,
+        bg="white",
+        fg=config.BLUE_COLOR,
+        hover_bg="#E0E0E0",
+        width=150
+    )
+    canvas.create_window(200, 260, window=btn_login, width=150, height=44)
+    
+    def on_close():
+        app.destroy()
+
+    login_win.protocol("WM_DELETE_WINDOW", on_close)
+    login_win.bind('<Return>', lambda e: do_login())
+    ent_user.focus()
+
+# --- USER MANAGER (ADMIN ONLY) ---
+def open_user_manager(parent):
+    ensure_fonts()
+    um_win = tk.Toplevel(parent)
+    um_win.title("مدیریت کاربران")
+    um_win.geometry("750x550")
+    um_win.configure(bg="white")
+    
+    # --- FIX: Set Icon ---
+    try: um_win.iconbitmap('app_icon.ico')
+    except: pass
+    
+    # List Frame (Left Side)
+    list_frame = tk.Frame(um_win, bg="white")
+    list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
+    
+    tk.Label(list_frame, text="لیست کاربران", font=(FONT_MAIN, 14, "bold"), bg="white", fg=config.BLUE_COLOR).pack(anchor="e")
+    
+    # Styled Listbox
+    user_list = tk.Listbox(list_frame, font=(FONT_TABLE, 12), bd=2, relief="groove", justify='right')
+    user_list.pack(fill=tk.BOTH, expand=True, pady=10)
+    
+    def refresh_list():
+        user_list.delete(0, tk.END)
+        users = database.get_all_users()
+        for u, r, fname in users:
+            role_fa = "مدیر" if r == 'admin' else "نگهبان"
+            display_name = fname if fname else "---"
+            user_list.insert(tk.END, f"[{role_fa}]  {display_name}  ({u})")
+            
+    refresh_list()
+    
+    action_frame = tk.Frame(um_win, bg="#F5F5F5", width=300, bd=1, relief="solid")
+    action_frame.pack(side=tk.RIGHT, fill=tk.Y)
+    action_frame.pack_propagate(False)
+    
+    tk.Label(action_frame, text="افزودن کاربر جدید", bg="#F5F5F5", fg="#333", font=(FONT_MAIN, 13, "bold")).pack(pady=(25, 15))
+    
+    def create_input(label_text, show=None):
+        tk.Label(action_frame, text=label_text, bg="#F5F5F5", font=(FONT_MAIN, 11)).pack(pady=(5, 0))
+        entry = tk.Entry(action_frame, justify='center', font=(FONT_MAIN, 11), show=show, width=22)
+        entry.pack(pady=2)
         return entry
 
-    ent_old = create_field("رمز عبور فعلی:")
-    ent_new = create_field("رمز عبور جدید:")
-    ent_confirm = create_field("تکرار رمز عبور جدید:")
+    new_fullname_ent = create_input(":نام و نام خانوادگی")
+    new_user_ent = create_input(":نام کاربری")
+    new_pass_ent = create_input(":رمز عبور")
+    
+    tk.Label(action_frame, text=":نقش کاربری", bg="#F5F5F5", font=(FONT_MAIN, 11)).pack(pady=(10, 5))
+    role_var = tk.StringVar(value="guard")
+    
+    radio_frame = tk.Frame(action_frame, bg="#F5F5F5")
+    radio_frame.pack()
+    
+    tk.Radiobutton(radio_frame, text="نگهبان", variable=role_var, value="guard", bg="#F5F5F5", font=(FONT_MAIN, 10)).pack(side=tk.RIGHT, padx=5)
+    tk.Radiobutton(radio_frame, text="مدیر", variable=role_var, value="admin", bg="#F5F5F5", font=(FONT_MAIN, 10)).pack(side=tk.RIGHT, padx=5)
+    
+    def add_user():
+        fname = new_fullname_ent.get().strip()
+        u = new_user_ent.get().strip()
+        p = new_pass_ent.get().strip()
+        r = role_var.get()
+        
+        if len(u) < 3 or len(p) < 3:
+            messagebox.showwarning("خطا", "نام کاربری و رمز عبور باید حداقل ۳ حرف باشند", parent=um_win)
+            return
+        
+        if len(fname) < 2:
+            messagebox.showwarning("خطا", "لطفاً نام و نام خانوادگی را وارد کنید", parent=um_win)
+            return
+        
+        ok, msg = database.create_user(u, p, fname, r)
+        if ok:
+            messagebox.showinfo("موفق", f"کاربر {fname} با موفقیت ایجاد شد", parent=um_win)
+            new_fullname_ent.delete(0, tk.END)
+            new_user_ent.delete(0, tk.END)
+            new_pass_ent.delete(0, tk.END)
+            refresh_list()
+        else:
+            messagebox.showerror("خطا", msg, parent=um_win)
 
-    def do_change():
-        if ent_old.get() != database.get_current_password():
-            messagebox.showerror("Error", "رمز عبور فعلی اشتباه است", parent=cp_win); return
-        if ent_new.get() != ent_confirm.get():
-            messagebox.showerror("Error", "تکرار رمز عبور مطابقت ندارد", parent=cp_win); return
-        if not ent_new.get():
-            messagebox.showerror("Error", "رمز عبور نمی‌تواند خالی باشد", parent=cp_win); return
-            
-        database.set_new_password(ent_new.get())
-        messagebox.showinfo("Success", "رمز عبور با موفقیت تغییر یافت", parent=cp_win)
-        cp_win.destroy()
-    tk.Button(cp_win, text="تغییر رمز", command=do_change, bg="white", fg=config.BLUE_COLOR, font=(FONT_MAIN, 11, "bold")).pack(pady=20)
+    widgets.RoundedButton(
+        action_frame, 
+        text="ثبت کاربر", 
+        command=add_user, 
+        width=180, height=40, 
+        bg=config.GREEN_COLOR, 
+        hover_bg=config.GREEN_ACTIVE_COLOR,
+        font=(FONT_MAIN, 12, "bold")
+    ).pack(pady=20)
+    
+    tk.Label(action_frame, text="------------------------", bg="#F5F5F5", fg="#CCC").pack(pady=10)
+    
+    def delete_selected():
+        sel = user_list.curselection()
+        if not sel: return
+        
+        text = user_list.get(sel[0]) 
+        username = text.split("(")[-1].replace(")", "").strip()
+        
+        if messagebox.askyesno("حذف", f"آیا از حذف کاربر {username} مطمئن هستید؟", parent=um_win):
+            ok, msg = database.delete_user(username)
+            if ok:
+                refresh_list()
+            else:
+                messagebox.showerror("خطا", msg, parent=um_win)
+
+    widgets.RoundedButton(
+        action_frame, 
+        text="حذف کاربر انتخاب شده", 
+        command=delete_selected, 
+        width=180, height=40, 
+        bg=config.RED_COLOR, 
+        hover_bg=config.RED_ACTIVE_COLOR,
+        font=(FONT_MAIN, 12, "bold")
+    ).pack(pady=5)
 
 def show_daily_stats_ui(parent_win):
     """Popup to show daily entry/exit counts."""
@@ -619,9 +780,7 @@ def open_search_window(app):
                 conn.close()
                 
                 popup.destroy()
-                
                 search_action()
-                
                 messagebox.showinfo("موفق", f"خروج {visitor_name} در ساعت {exit_time_str} ثبت شد", parent=search_win)
                 
             except Exception as e: 
@@ -676,7 +835,7 @@ def open_developer_mode(app):
     ensure_fonts()
     dev_win = tk.Toplevel(app)
     dev_win.title("پنل مدیریت")
-    dev_win.geometry("400x680")
+    dev_win.geometry("400x700")
     try:
         dev_win.iconbitmap('app_icon.ico')
     except:
@@ -689,7 +848,18 @@ def open_developer_mode(app):
         bg=config.BLUE_COLOR,
         fg="white"
     ).pack(pady=20)
+
     # --- Buttons ---
+    widgets.RoundedButton(
+        dev_win,
+        text="مدیریت کاربران",
+        command=lambda: open_user_manager(dev_win),
+        bg="#FF5722",
+        hover_bg="#E64A19",
+        font=(FONT_MAIN, 14, "bold"),
+        width=250
+    ).pack(pady=6)
+    
     widgets.RoundedButton(
         dev_win,
         text="افزودن ۱۰۰ رکورد آزمایشی",
@@ -706,15 +876,6 @@ def open_developer_mode(app):
         bg=config.RED_COLOR,
         hover_bg=config.RED_ACTIVE_COLOR,
         font=(FONT_MAIN, 14),
-        width=250
-    ).pack(pady=6)
-    widgets.RoundedButton(
-        dev_win,
-        text="تغییر رمز عبور",
-        command=lambda: change_password_ui(dev_win),
-        bg="#FF9800",
-        hover_bg="#F57C00",
-        font=(FONT_MAIN, 13),
         width=250
     ).pack(pady=6)
     widgets.RoundedButton(

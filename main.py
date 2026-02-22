@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox, font
 import sqlite3
 import os
 import random
-import threading  # <--- NEW IMPORT
+import threading
 from datetime import datetime
 import jdatetime
 from PIL import Image, ImageTk
@@ -29,6 +29,7 @@ except Exception: pass
 available_fonts = font.families()
 if "B Titr" in available_fonts: FONT_MAIN = "B Titr"
 else: FONT_MAIN = "Tahoma"
+
 if "B Nazanin" in available_fonts: FONT_TABLE = "B Nazanin"
 else: FONT_TABLE = "Tahoma"
 
@@ -274,12 +275,14 @@ def submit_visitor():
         conn.commit()
         conn.close()
         
+        # --- Run printing in background thread ---
         print_thread = threading.Thread(
             target=printer.print_receipt, 
             args=(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str),
             daemon=True
         )
         print_thread.start()
+        # -----------------------------------------
         
         clear_fields()
         
@@ -357,20 +360,39 @@ widgets.RoundedButton(
     font=(FONT_MAIN, 12)
 ).pack(pady=6)
 
-# --- MENU BAR SETUP ---
-menubar = tk.Menu(app)
+# --- LOGIN & MENU SETUP ---
+def setup_dashboard(username, role):
+    """
+    Called after successful login.
+    1. Shows main window.
+    2. Updates title.
+    3. Builds Menu Bar based on Role.
+    """
+    app.deiconify()
+    app.title(f"سامانه مدیریت ورود و خروج - کاربر: {username} ({'مدیر' if role=='admin' else 'نگهبان'})")
+    
+    menubar = tk.Menu(app)
+    
+    if role == 'admin':
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app))
+        menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
+    
+    guard_menu = tk.Menu(menubar, tearoff=0)
+    guard_menu.add_command(label="دفتر ثبت وقایع", command=lambda: windows.open_shift_log_window(app))
+    menubar.add_cascade(label="امور نگهبانی", menu=guard_menu)
+    
+    # 3. Logout Option
+    user_menu = tk.Menu(menubar, tearoff=0)
+    
+    def logout():
+        app.withdraw()
+        windows.show_login_screen(app, setup_dashboard)
+        
+    user_menu.add_command(label="خروج از حساب", command=logout)
+    menubar.add_cascade(label=f"حساب کاربری ({username})", menu=user_menu)
 
-# 1. Management Menu
-tools_menu = tk.Menu(menubar, tearoff=0)
-tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.ask_dev_password(app))
-menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
-
-# 2. NEW Guard Menu
-guard_menu = tk.Menu(menubar, tearoff=0)
-guard_menu.add_command(label="دفتر ثبت وقایع", command=lambda: windows.open_shift_log_window(app))
-menubar.add_cascade(label="امور نگهبانی", menu=guard_menu)
-
-app.config(menu=menubar)
+    app.config(menu=menubar)
 
 # --- QoL: Press Enter to move to next field ---
 try:
@@ -430,6 +452,12 @@ for widget in all_inputs:
 
 if __name__ == "__main__":
     database.setup_database()
+    
     update_employee_suggestions()
     start_quote_cycle()
+    
+    app.withdraw()
+    
+    windows.show_login_screen(app, setup_dashboard)
+    
     app.mainloop()
