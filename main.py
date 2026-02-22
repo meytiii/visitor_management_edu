@@ -163,7 +163,6 @@ def validate_national_id_on_exit():
 def validate_visitor_name_on_exit():
     """Validate visitor name when field loses focus"""
     name = entry_visitor_name.get().strip()
-    
     if name and len(name) > 0:
         is_valid, error_msg = utils.validate_persian_name(name)
         
@@ -374,6 +373,8 @@ def setup_dashboard(username, role, full_name):
     Called after successful login.
     """
     app.deiconify()
+    
+    app.current_user = full_name 
     
     app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {full_name}")
     

@@ -36,7 +36,6 @@ def show_help_popup():
     help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {config.APP_VERSION}"
     messagebox.showinfo("راهنما", help_text)
 
-# --- LOGIN SYSTEM ---
 def show_login_screen(app, on_success_callback):
     """
     Shows a login window using a Canvas for transparent text over the background image.
@@ -54,12 +53,11 @@ def show_login_screen(app, on_success_callback):
     login_win.geometry(f"{width}x{height}+{x}+{y}")
     login_win.resizable(False, False)
 
-    # --- CANVAS SETUP (Required for transparent text) ---
+    # --- CANVAS SETUP ---
     canvas = tk.Canvas(login_win, width=width, height=height, highlightthickness=0)
     canvas.pack(fill="both", expand=True)
 
     # --- BACKGROUND IMAGE ---
-    # Default color if image is missing
     canvas.configure(bg="#59A552") 
     
     if os.path.exists("login.png"):
@@ -67,11 +65,7 @@ def show_login_screen(app, on_success_callback):
             pil_image = Image.open("login.png")
             pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
             bg_image_obj = ImageTk.PhotoImage(pil_image)
-            
-            # Draw image at (0,0)
             canvas.create_image(0, 0, image=bg_image_obj, anchor="nw")
-            
-            # Keep reference so it doesn't disappear
             login_win.bg_image_obj = bg_image_obj 
         except Exception as e:
             print(f"Error loading login background: {e}")
@@ -80,23 +74,14 @@ def show_login_screen(app, on_success_callback):
     try: login_win.iconbitmap('app_icon.ico')
     except: pass
 
-    # --- DRAWING TEXT (Transparent) ---
-    # Coordinates are (x, y). x=200 is the horizontal center (400/2)
-    
-    # Title
+    # --- DRAWING TEXT ---
     canvas.create_text(200, 40, text="سامانه مدیریت مراجعین", fill="#D0F8FF", font=(FONT_MAIN, 16, "bold"))
     
-    # Username Label
     canvas.create_text(200, 90, text=":نام کاربری", fill="#FFF9D7", font=(FONT_MAIN, 12))
-    
-    # Username Entry (Placed as a window on the canvas)
     ent_user = tk.Entry(login_win, justify='center', font=(FONT_MAIN, 12))
     canvas.create_window(200, 120, window=ent_user, width=200, height=30)
     
-    # Password Label
     canvas.create_text(200, 160, text=":رمز عبور", fill="#FFF9D7", font=(FONT_MAIN, 12))
-    
-    # Password Entry
     ent_pass = tk.Entry(login_win, show="●", justify='center', font=(FONT_MAIN, 12))
     canvas.create_window(200, 190, window=ent_pass, width=200, height=30)
     
@@ -113,7 +98,6 @@ def show_login_screen(app, on_success_callback):
         else:
             messagebox.showerror("خطا", "نام کاربری یا رمز عبور اشتباه است", parent=login_win)
             ent_pass.delete(0, tk.END)
-
 
     # Login Button
     btn_login = widgets.RoundedButton(
@@ -516,7 +500,8 @@ def open_search_window(app):
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
     search_win.title("مشاهده و جستجوی سوابق")
-    search_win.geometry("1200x750")
+    search_win.geometry("1300x750") # Made slightly wider for new column
+    
     # --- FILTER FRAME ---
     search_frame = ttk.LabelFrame(search_win, text="فیلترهای جستجو", padding=(10, 10))
     search_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -545,22 +530,23 @@ def open_search_window(app):
     tree_frame.pack(expand=True, fill=tk.BOTH)
     v_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL)
     h_scroll = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL)
-    columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time")
     
-    # Style is global in main, but we can access singleton style
+    # ADDED: created_by
+    columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time", "created_by")
+    
     style = ttk.Style()
     style.configure("Custom.Treeview", font=(FONT_TABLE, 12, "bold"), rowheight=35)
     style.configure("Custom.Treeview.Heading", font=(FONT_MAIN, 12))
     tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode="browse", style="Custom.Treeview", 
                         yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
     
-    # Config Scrollbars
     v_scroll.config(command=tree.yview)
     v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
     h_scroll.config(command=tree.xview)
     h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
     
     tree.pack(expand=True, fill=tk.BOTH)
+    
     headings = {
         "id": "شماره", 
         "visitor_name": "نام مهمان", 
@@ -569,21 +555,25 @@ def open_search_window(app):
         "department": "واحد", 
         "entry_time": "ساعت ورود", 
         "shamsi_date": "تاریخ ورود", 
-        "exit_time": "ساعت خروج"
+        "exit_time": "ساعت خروج",
+        "created_by": "کاربر ثبت کننده"  # <--- NEW HEADER
     }
     for col, text in headings.items(): tree.heading(col, text=text)
+    
     tree.column("id", width=60, anchor=tk.CENTER, minwidth=50)
-    tree.column("visitor_name", width=180, anchor=tk.E, minwidth=150) 
-    tree.column("national_id", width=110, anchor=tk.CENTER, minwidth=100)
-    tree.column("employee_to_meet", width=160, anchor=tk.E, minwidth=140)
-    tree.column("department", width=140, anchor=tk.E, minwidth=120)
-    tree.column("entry_time", width=80, anchor=tk.CENTER, minwidth=70)
-    tree.column("shamsi_date", width=100, anchor=tk.CENTER, minwidth=90)
-    tree.column("exit_time", width=80, anchor=tk.CENTER, minwidth=70)
+    tree.column("visitor_name", width=160, anchor=tk.E, minwidth=140) 
+    tree.column("national_id", width=100, anchor=tk.CENTER, minwidth=90)
+    tree.column("employee_to_meet", width=140, anchor=tk.E, minwidth=130)
+    tree.column("department", width=120, anchor=tk.E, minwidth=110)
+    tree.column("entry_time", width=70, anchor=tk.CENTER, minwidth=60)
+    tree.column("shamsi_date", width=90, anchor=tk.CENTER, minwidth=80)
+    tree.column("exit_time", width=70, anchor=tk.CENTER, minwidth=60)
+    tree.column("created_by", width=130, anchor=tk.CENTER, minwidth=100) # <--- NEW COLUMN CONFIG
 
     # --- CORE FUNCTIONS ---
     def get_query_and_params(filters):
-        query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors WHERE 1=1"
+        # ADDED: created_by to SELECT
+        query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time, created_by FROM visitors WHERE 1=1"
         params = []
         if filters.get("name"): query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
         if filters.get("nid"): query += " AND national_id LIKE ?"; params.append(f"%{filters['nid']}%")
@@ -608,7 +598,14 @@ def open_search_window(app):
                 display_time = dt_obj.strftime("%H:%M")
             except: display_time = record[5]
             
-            display_record = (record[0], record[1], record[2], record[3], record[4], display_time, record[6] or "", record[7] or "")
+            # Handle possible NULL in created_by (for old records)
+            registrar = record[8] if len(record) > 8 and record[8] else "---"
+            
+            display_record = (
+                record[0], record[1], record[2], record[3], record[4], 
+                display_time, record[6] or "", record[7] or "", 
+                registrar # <--- NEW VALUE
+            )
             tree.insert("", tk.END, values=display_record)
 
     def fetch_and_display_records(filters=None):
@@ -644,7 +641,8 @@ def open_search_window(app):
         if not rows:
             messagebox.showwarning("هشدار", "رکوردی برای خروجی گرفتن وجود ندارد")
             return
-        columns_export = ["شناسه", "نام مهمان", "کد ملی", "ملاقات شونده", "واحد", "زمان ورود (میلادی)", "تاریخ شمسی", "ساعت خروج"]
+        
+        columns_export = ["شناسه", "نام مهمان", "کد ملی", "ملاقات شونده", "واحد", "زمان ورود (میلادی)", "تاریخ شمسی", "ساعت خروج", "کاربر ثبت کننده"]
         try:
             df = pd.DataFrame(rows, columns=columns_export)
             file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")], title="ذخیره فایل اکسل")
@@ -672,11 +670,8 @@ def open_search_window(app):
         popup.title("ثبت خروج")
         popup.geometry("500x500")
         popup.resizable(False, False)
-        
-        try:
-            popup.iconbitmap('app_icon.ico')
-        except:
-            pass
+        try: popup.iconbitmap('app_icon.ico')
+        except: pass
         
         x = search_win.winfo_x() + (search_win.winfo_width() // 2) - 250
         y = search_win.winfo_y() + (search_win.winfo_height() // 2) - 250
