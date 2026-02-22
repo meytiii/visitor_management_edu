@@ -266,11 +266,19 @@ def submit_visitor():
     now = datetime.now()
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
+    
+    # --- GET CURRENT USER ---
+    registrar = getattr(app, 'current_user', 'سیستم') 
+    
     try:
         conn = sqlite3.connect(config.DB_PATH)
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)',
-                       (visitor_name, national_id, employee_to_meet, department, entry_time_str, shamsi_date_str))
+        # --- UPDATED SQL TO INCLUDE created_by ---
+        cursor.execute('''
+            INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (visitor_name, national_id, employee_to_meet, department, entry_time_str, shamsi_date_str, registrar))
+        
         visitor_id = cursor.lastrowid
         conn.commit()
         conn.close()

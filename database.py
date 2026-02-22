@@ -43,12 +43,17 @@ def setup_database():
         cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
     except sqlite3.OperationalError: pass
     
+    try:
+        cursor.execute("ALTER TABLE visitors ADD COLUMN created_by TEXT;")
+    except sqlite3.OperationalError: pass
+        
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS visitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_name TEXT NOT NULL,
             national_id TEXT NOT NULL, employee_to_meet TEXT NOT NULL,
             department TEXT NOT NULL, entry_time TEXT NOT NULL,
-            shamsi_date TEXT, exit_time TEXT
+            shamsi_date TEXT, exit_time TEXT,
+            created_by TEXT  -- Added this for new installs
         )''')
     
     cursor.execute('''
@@ -72,6 +77,7 @@ def setup_database():
         cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
     except sqlite3.OperationalError: pass
     
+    # Default Admin
     cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
     if cursor.fetchone()[0] == 0:
         default_pass = hash_password("admin")
