@@ -880,15 +880,12 @@ def open_developer_mode(app):
         except Exception as e:
             print(f"Error loading developer background: {e}")
     # -----------------------------
-
-    # Note: I changed bg to "" (empty) or removed it for labels so they don't block the image
-    # If the text is hard to read, you might need to adjust the text color (fg)
     
     tk.Label(
         dev_win,
         text="ابزارهای مدیریت سیستم",
         font=(FONT_MAIN, 14, "bold"),
-        bg=config.BLUE_COLOR, # Keep blue background for header text visibility or change to matches image
+        bg=config.BLUE_COLOR,
         fg="white"
     ).pack(pady=20)
     
