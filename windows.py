@@ -145,10 +145,27 @@ def open_user_manager(parent):
     # --- FIX: Set Icon ---
     try: um_win.iconbitmap('app_icon.ico')
     except: pass
+
+    # --- NEW: Background Image ---
+    if os.path.exists("user_management.png"):
+        try:
+            original_img = Image.open("user_management.png")
+            resized_img = original_img.resize((750, 550), Image.Resampling.LANCZOS)
+            bg_photo = ImageTk.PhotoImage(resized_img)
+            
+            bg_label = tk.Label(um_win, image=bg_photo)
+            bg_label.image = bg_photo
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            bg_label.lower()
+        except Exception as e:
+            print(f"Error loading user_management background: {e}")
+    # -----------------------------
     
     # List Frame (Left Side)
-    list_frame = tk.Frame(um_win, bg="white")
-    list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
+    list_frame = tk.Frame(um_win, bg="white", width=280) 
+    list_frame.pack(side=tk.LEFT, fill=tk.Y, padx=15, pady=15)
+    list_frame.pack_propagate(False)
+
     
     tk.Label(list_frame, text="لیست کاربران", font=(FONT_MAIN, 14, "bold"), bg="white", fg=config.BLUE_COLOR).pack(anchor="e")
     
@@ -158,20 +175,23 @@ def open_user_manager(parent):
     
     def refresh_list():
         user_list.delete(0, tk.END)
-        users = database.get_all_users()
+        users = database.get_all_users() # [(user, role, full_name), ...]
         for u, r, fname in users:
             role_fa = "مدیر" if r == 'admin' else "نگهبان"
             display_name = fname if fname else "---"
+            # Format: [Role] Full Name (username)
             user_list.insert(tk.END, f"[{role_fa}]  {display_name}  ({u})")
             
     refresh_list()
     
+    # Action Frame (Right Side)
     action_frame = tk.Frame(um_win, bg="#F5F5F5", width=300, bd=1, relief="solid")
     action_frame.pack(side=tk.RIGHT, fill=tk.Y)
     action_frame.pack_propagate(False)
     
     tk.Label(action_frame, text="افزودن کاربر جدید", bg="#F5F5F5", fg="#333", font=(FONT_MAIN, 13, "bold")).pack(pady=(25, 15))
     
+    # Helper to create inputs
     def create_input(label_text, show=None):
         tk.Label(action_frame, text=label_text, bg="#F5F5F5", font=(FONT_MAIN, 11)).pack(pady=(5, 0))
         entry = tk.Entry(action_frame, justify='center', font=(FONT_MAIN, 11), show=show, width=22)
@@ -180,8 +200,9 @@ def open_user_manager(parent):
 
     new_fullname_ent = create_input(":نام و نام خانوادگی")
     new_user_ent = create_input(":نام کاربری")
-    new_pass_ent = create_input(":رمز عبور")
+    new_pass_ent = create_input(":رمز عبور") 
     
+    # Role Selection
     tk.Label(action_frame, text=":نقش کاربری", bg="#F5F5F5", font=(FONT_MAIN, 11)).pack(pady=(10, 5))
     role_var = tk.StringVar(value="guard")
     
@@ -215,6 +236,7 @@ def open_user_manager(parent):
         else:
             messagebox.showerror("خطا", msg, parent=um_win)
 
+    # Add Button
     widgets.RoundedButton(
         action_frame, 
         text="ثبت کاربر", 
@@ -232,7 +254,7 @@ def open_user_manager(parent):
         if not sel: return
         
         text = user_list.get(sel[0]) 
-        username = text.split("(")[-1].replace(")", "").strip()
+        username = text.split("  (")[-1].replace(")", "").strip()
         
         if messagebox.askyesno("حذف", f"آیا از حذف کاربر {username} مطمئن هستید؟", parent=um_win):
             ok, msg = database.delete_user(username)
@@ -241,6 +263,7 @@ def open_user_manager(parent):
             else:
                 messagebox.showerror("خطا", msg, parent=um_win)
 
+    # Delete Button
     widgets.RoundedButton(
         action_frame, 
         text="حذف کاربر انتخاب شده", 
