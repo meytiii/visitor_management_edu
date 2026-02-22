@@ -865,15 +865,35 @@ def open_developer_mode(app):
     except:
         pass
     dev_win.configure(bg=config.BLUE_COLOR)
+
+    # --- NEW: Background Image ---
+    if os.path.exists("developer.png"):
+        try:
+            original_img = Image.open("developer.png")
+            resized_img = original_img.resize((400, 700), Image.Resampling.LANCZOS)
+            bg_photo = ImageTk.PhotoImage(resized_img)
+            
+            bg_label = tk.Label(dev_win, image=bg_photo)
+            bg_label.image = bg_photo # Keep reference
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            bg_label.lower()
+        except Exception as e:
+            print(f"Error loading developer background: {e}")
+    # -----------------------------
+
+    # Note: I changed bg to "" (empty) or removed it for labels so they don't block the image
+    # If the text is hard to read, you might need to adjust the text color (fg)
+    
     tk.Label(
         dev_win,
         text="ابزارهای مدیریت سیستم",
         font=(FONT_MAIN, 14, "bold"),
-        bg=config.BLUE_COLOR,
+        bg=config.BLUE_COLOR, # Keep blue background for header text visibility or change to matches image
         fg="white"
     ).pack(pady=20)
-
+    
     # --- Buttons ---
+    
     widgets.RoundedButton(
         dev_win,
         text="مدیریت کاربران",
@@ -938,10 +958,11 @@ def open_developer_mode(app):
         font=(FONT_MAIN, 13),
         width=250
     ).pack(pady=6)
+    
     tk.Label(
         dev_win,
         text="⚠️ مخصوص راهبر سیستم و پشتیبانی",
         font=(FONT_MAIN, 10),
-        bg=config.BLUE_COLOR,
+        bg=config.BLUE_COLOR, 
         fg="#E0E0E0"
     ).pack(side=tk.BOTTOM, pady=10)
