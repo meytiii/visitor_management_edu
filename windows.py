@@ -105,18 +105,19 @@ def show_login_screen(app, on_success_callback):
         u = ent_user.get().strip()
         p = ent_pass.get().strip()
         
-        success, role = database.authenticate_user(u, p)
+        success, role, full_name = database.authenticate_user(u, p)
         
         if success:
             login_win.destroy()
-            on_success_callback(u, role)
+            on_success_callback(u, role, full_name)
         else:
             messagebox.showerror("خطا", "نام کاربری یا رمز عبور اشتباه است", parent=login_win)
             ent_pass.delete(0, tk.END)
 
+
     # Login Button
     btn_login = widgets.RoundedButton(
-        login_win, # Note: Parent is still the window, but we place it on canvas
+        login_win,
         text="ورود",
         command=do_login,
         bg="white",

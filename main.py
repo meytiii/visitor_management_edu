@@ -361,23 +361,23 @@ widgets.RoundedButton(
 ).pack(pady=6)
 
 # --- LOGIN & MENU SETUP ---
-def setup_dashboard(username, role):
+def setup_dashboard(username, role, full_name):
     """
     Called after successful login.
-    1. Shows main window.
-    2. Updates title.
-    3. Builds Menu Bar based on Role.
     """
     app.deiconify()
-    app.title(f"سامانه مدیریت ورود و خروج - کاربر: {username} ({'مدیر' if role=='admin' else 'نگهبان'})")
+    
+    app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {full_name}")
     
     menubar = tk.Menu(app)
     
+    # 1. Admin Menu (Only for Admins)
     if role == 'admin':
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app))
         menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
     
+    # 2. Guard Menu (For Everyone)
     guard_menu = tk.Menu(menubar, tearoff=0)
     guard_menu.add_command(label="دفتر ثبت وقایع", command=lambda: windows.open_shift_log_window(app))
     menubar.add_cascade(label="امور نگهبانی", menu=guard_menu)
@@ -386,11 +386,15 @@ def setup_dashboard(username, role):
     user_menu = tk.Menu(menubar, tearoff=0)
     
     def logout():
+        for widget in app.winfo_children():
+            if isinstance(widget, tk.Toplevel):
+                widget.destroy()
+        
         app.withdraw()
         windows.show_login_screen(app, setup_dashboard)
         
     user_menu.add_command(label="خروج از حساب", command=logout)
-    menubar.add_cascade(label=f"حساب کاربری ({username})", menu=user_menu)
+    menubar.add_cascade(label=f"حساب کاربری: {full_name}", menu=user_menu)
 
     app.config(menu=menubar)
 

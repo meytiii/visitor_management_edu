@@ -109,19 +109,23 @@ def get_all_users():
 
 # --- USER MANAGEMENT ---
 def authenticate_user(username, password):
-    """Returns (Success, Role)"""
+    """Returns (Success, Role, FullName)"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT password, role FROM users WHERE username=?", (username,))
+    cursor.execute("SELECT password, role, full_name FROM users WHERE username=?", (username,))
     row = cursor.fetchone()
     conn.close()
     
     if row:
         stored_hash = row[0]
         role = row[1]
+        full_name = row[2] if row[2] else username 
+        
         if verify_password(stored_hash, password):
-            return True, role
-    return False, None
+            return True, role, full_name
+            
+    return False, None, None
+
 
 def delete_user(username):
     conn = sqlite3.connect(DB_PATH)
