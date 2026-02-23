@@ -75,7 +75,7 @@ def update_live_clock():
 live_clock_label = tk.Label(
     app, 
     text="", 
-    font=(FONT_MAIN, 14, "bold"), 
+    font=(FONT_MAIN, 14, "bold"),
     bg=config.DEFAULT_BG_COLOR,
     fg="#00695C"       
 )
