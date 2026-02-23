@@ -505,6 +505,7 @@ def open_search_window(app):
     # --- STATE VARIABLES ---
     current_page = 1
     items_per_page = 50
+    total_pages = 1
     current_filters = {} 
     
     # --- FILTER FRAME ---
@@ -552,15 +553,8 @@ def open_search_window(app):
     tree.pack(expand=True, fill=tk.BOTH)
     
     headings = {
-        "id": "شماره", 
-        "visitor_name": "نام مهمان", 
-        "national_id": "کد ملی", 
-        "employee_to_meet": "ملاقات شونده", 
-        "department": "واحد", 
-        "entry_time": "ساعت ورود", 
-        "shamsi_date": "تاریخ ورود", 
-        "exit_time": "ساعت خروج",
-        "created_by": "کاربر ثبت کننده"
+        "id": "شماره", "visitor_name": "نام مهمان", "national_id": "کد ملی", "employee_to_meet": "ملاقات شونده", 
+        "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج", "created_by": "کاربر ثبت کننده"
     }
     for col, text in headings.items(): tree.heading(col, text=text)
     
@@ -578,42 +572,53 @@ def open_search_window(app):
     pagination_frame = tk.Frame(search_win, bg=config.DEFAULT_BG_COLOR, pady=10)
     pagination_frame.pack(fill=tk.X)
     
-    # 1. Page Label
-    lbl_page_info = tk.Label(pagination_frame, text="صفحه 1", font=(FONT_MAIN, 12), bg=config.DEFAULT_BG_COLOR)
-    lbl_page_info.pack(side=tk.RIGHT, padx=(10, 25))
+    # 1. Info Label (Far Right)
+    lbl_info = tk.Label(pagination_frame, text="", font=(FONT_MAIN, 11), bg=config.DEFAULT_BG_COLOR)
+    lbl_info.pack(side=tk.RIGHT, padx=20)
     
-    def change_page(delta):
+    # 2. Controls Container (Center/Left)
+    controls_frame = tk.Frame(pagination_frame, bg=config.DEFAULT_BG_COLOR)
+    controls_frame.pack(side=tk.LEFT, padx=20)
+    
+    # Page Number Label (Center of buttons)
+    lbl_page_num = tk.Label(controls_frame, text="1", font=(FONT_MAIN, 14, "bold"), bg=config.DEFAULT_BG_COLOR, width=4)
+    
+    def change_page(action):
         nonlocal current_page
-        new_page = current_page + delta
-        if new_page < 1: return
-        current_page = new_page
+        if action == 'first':
+            if current_page == 1: return
+            current_page = 1
+        elif action == 'prev':
+            if current_page <= 1: return
+            current_page -= 1
+        elif action == 'next':
+            if current_page >= total_pages: return
+            current_page += 1
+        elif action == 'last':
+            if current_page == total_pages: return
+            current_page = total_pages
+            
         fetch_and_display_records(current_filters)
 
-    # 2. Next Button
-    btn_next = widgets.RoundedButton(
-        pagination_frame, 
-        text="صفحه بعد >", 
-        command=lambda: change_page(1), 
-        width=110, height=35, 
-        radius=15,
-        bg=config.BLUE_COLOR,
-        hover_bg=config.BLUE_ACTIVE_COLOR,
-        font=(FONT_MAIN, 11)
-    )
-    btn_next.pack(side=tk.RIGHT, padx=5)
+    # Button Styling
+    btn_style = {"width": 50, "height": 35, "radius": 10, "bg": config.BLUE_COLOR, "hover_bg": config.BLUE_ACTIVE_COLOR, "font": (FONT_MAIN, 12, "bold")}
     
-    # 3. Previous Button
-    btn_prev = widgets.RoundedButton(
-        pagination_frame, 
-        text="< صفحه قبل", 
-        command=lambda: change_page(-1), 
-        width=110, height=35, 
-        radius=15,
-        bg=config.BLUE_COLOR,
-        hover_bg=config.BLUE_ACTIVE_COLOR,
-        font=(FONT_MAIN, 11)
-    )
-    btn_prev.pack(side=tk.RIGHT, padx=5)
+    # Layout: |<  <  1  >  >|
+    
+    # Last Page Button (|<)
+    widgets.RoundedButton(controls_frame, text="|<", command=lambda: change_page('last'), **btn_style).pack(side=tk.LEFT, padx=3)
+    
+    # Prev Button (<)
+    widgets.RoundedButton(controls_frame, text="<", command=lambda: change_page('prev'), **btn_style).pack(side=tk.LEFT, padx=3)
+    
+    # Page Number
+    lbl_page_num.pack(side=tk.LEFT, padx=5)
+    
+    # Next Button (>)
+    widgets.RoundedButton(controls_frame, text=">", command=lambda: change_page('next'), **btn_style).pack(side=tk.LEFT, padx=3)
+    
+    # First Page Button (>|)
+    widgets.RoundedButton(controls_frame, text=">|", command=lambda: change_page('first'), **btn_style).pack(side=tk.LEFT, padx=3)
 
     # --- CORE FUNCTIONS ---
     def get_query_and_params(filters, count_only=False):
@@ -655,15 +660,25 @@ def open_search_window(app):
             tree.insert("", tk.END, values=display_record)
 
     def fetch_and_display_records(filters=None):
-        nonlocal current_page
+        nonlocal current_page, total_pages
         if filters is None: filters = {}
         
         conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
         
+        # 1. Get Total Count
         count_query, count_params = get_query_and_params(filters, count_only=True)
         cursor.execute(count_query, count_params)
         total_records = cursor.fetchone()[0]
         
+        # Calculate Total Pages
+        import math
+        total_pages = math.ceil(total_records / items_per_page)
+        if total_pages < 1: total_pages = 1
+        
+        # Ensure current page is valid
+        if current_page > total_pages: current_page = total_pages
+        
+        # 2. Get Data
         query, params = get_query_and_params(filters, count_only=False)
         query += " ORDER BY id DESC LIMIT ? OFFSET ?"
         
@@ -676,9 +691,11 @@ def open_search_window(app):
         populate_tree(records)
         conn.close()
         
+        # Update UI Labels
         start_idx = offset + 1 if total_records > 0 else 0
         end_idx = min(offset + items_per_page, total_records)
-        lbl_page_info.config(text=f"نمایش {start_idx} تا {end_idx} از {total_records} رکورد (صفحه {current_page})")
+        lbl_info.config(text=f"نمایش {start_idx} تا {end_idx} از {total_records} رکورد")
+        lbl_page_num.config(text=str(current_page))
 
     def search_action(): 
         nonlocal current_filters, current_page
