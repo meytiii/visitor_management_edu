@@ -3,6 +3,7 @@ import random
 import hashlib
 import binascii
 import os
+import threading
 from datetime import datetime
 import jdatetime
 from tkinter import messagebox
@@ -11,24 +12,62 @@ import config
 DB_PATH = config.DB_PATH
 DEPARTMENT_LIST = config.DEPARTMENT_LIST
 
+# --- CONNECTION POOLING SETUP ---
+# Thread-local storage to ensure each thread gets its own persistent connection
+_thread_local = threading.local()
+
+def _get_connection():
+    """
+    Retrieves or creates a persistent connection for the current thread.
+    """
+    if not hasattr(_thread_local, "connection"):
+        # Create a new connection for this thread
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        # WAL mode improves concurrency (reading while writing)
+        try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+        except: pass
+        _thread_local.connection = conn
+    
+    return _thread_local.connection
+
+class DBConnection:
+    """
+    Context Manager for Database Access.
+    Usage:
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(...)
+    
+    Benefits:
+    - Reuses the persistent connection (High Performance).
+    - Automatically commits on success.
+    - Automatically rolls back on error.
+    - DOES NOT CLOSE the connection (keeps it 'pooled').
+    """
+    def __enter__(self):
+        self.conn = _get_connection()
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.conn.rollback() # Error occurred, undo changes
+        else:
+            self.conn.commit()   # Success, save changes
+        # We intentionally do NOT close the connection here
+
 # --- HASHING UTILS ---
 def hash_password(password):
-    """Hash a password for storing."""
     salt = hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii')
-    pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), 
-                                salt, 100000)
+    pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt, 100000)
     pwdhash = binascii.hexlify(pwdhash)
     return (salt + pwdhash).decode('ascii')
  
 def verify_password(stored_password, provided_password):
-    """Verify a stored password against one provided by user"""
     try:
         salt = stored_password[:64]
         stored_password = stored_password[64:]
-        pwdhash = hashlib.pbkdf2_hmac('sha512', 
-                                    provided_password.encode('utf-8'), 
-                                    salt.encode('ascii'), 
-                                    100000)
+        pwdhash = hashlib.pbkdf2_hmac('sha512', provided_password.encode('utf-8'), salt.encode('ascii'), 100000)
         pwdhash = binascii.hexlify(pwdhash).decode('ascii')
         return pwdhash == stored_password
     except:
@@ -36,90 +75,82 @@ def verify_password(stored_password, provided_password):
 
 # --- DATABASE SETUP ---
 def setup_database():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    try: cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
-    except sqlite3.OperationalError: pass
-    
-    try: cursor.execute("ALTER TABLE visitors ADD COLUMN created_by TEXT;")
-    except sqlite3.OperationalError: pass
+    with DBConnection() as conn:
+        cursor = conn.cursor()
         
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS visitors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_name TEXT NOT NULL,
-            national_id TEXT NOT NULL, employee_to_meet TEXT NOT NULL,
-            department TEXT NOT NULL, entry_time TEXT NOT NULL,
-            shamsi_date TEXT, exit_time TEXT,
-            created_by TEXT
-        )''')
-    
-    # --- PERFORMANCE INDEXES ---
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_national_id ON visitors (national_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_shamsi_date ON visitors (shamsi_date);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitor_name ON visitors (visitor_name);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employee ON visitors (employee_to_meet);")
-    # --------------------------------
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS shift_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_text TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            shamsi_date TEXT NOT NULL
-        )''')
+        # Migrations
+        try: cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
+        except sqlite3.OperationalError: pass
         
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL,
-            full_name TEXT
-        )''')
-    
-    try: cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
-    except sqlite3.OperationalError: pass
-    
-    # Default Admin
-    cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
-    if cursor.fetchone()[0] == 0:
-        default_pass = hash_password("admin")
-        cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
-                       ("admin", default_pass, "admin", "مدیر سیستم"))
-        print("Default Admin created: user='admin', pass='admin'")
-
-    conn.commit()
-    conn.close()
+        try: cursor.execute("ALTER TABLE visitors ADD COLUMN created_by TEXT;")
+        except sqlite3.OperationalError: pass
+            
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS visitors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_name TEXT NOT NULL,
+                national_id TEXT NOT NULL, employee_to_meet TEXT NOT NULL,
+                department TEXT NOT NULL, entry_time TEXT NOT NULL,
+                shamsi_date TEXT, exit_time TEXT,
+                created_by TEXT
+            )''')
+        
+        # Indexes (Performance)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_national_id ON visitors (national_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_shamsi_date ON visitors (shamsi_date);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitor_name ON visitors (visitor_name);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_employee ON visitors (employee_to_meet);")
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS shift_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_text TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                shamsi_date TEXT NOT NULL
+            )''')
+            
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL,
+                full_name TEXT
+            )''')
+        
+        try: cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
+        except sqlite3.OperationalError: pass
+        
+        # Default Admin
+        cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
+        if cursor.fetchone()[0] == 0:
+            default_pass = hash_password("admin")
+            cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
+                           ("admin", default_pass, "admin", "مدیر سیستم"))
+            print("Default Admin created")
 
 # --- USER MANAGEMENT ---
 def authenticate_user(username, password):
-    """Returns (Success, Role, FullName)"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT password, role, full_name FROM users WHERE username=?", (username,))
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        stored_hash = row[0]
-        role = row[1]
-        full_name = row[2] if row[2] else username 
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT password, role, full_name FROM users WHERE username=?", (username,))
+        row = cursor.fetchone()
         
-        if verify_password(stored_hash, password):
-            return True, role, full_name
+        if row:
+            stored_hash, role, full_name_db = row
+            display_name = full_name_db if full_name_db else username
             
+            if verify_password(stored_hash, password):
+                return True, role, display_name
+                
     return False, None, None
 
 def create_user(username, password, full_name, role="guard"):
     try:
         hashed = hash_password(password)
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
-                       (username, hashed, role, full_name))
-        conn.commit()
-        conn.close()
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
+                           (username, hashed, role, full_name))
         return True, ""
     except sqlite3.IntegrityError:
         return False, "نام کاربری تکراری است"
@@ -127,43 +158,34 @@ def create_user(username, password, full_name, role="guard"):
         return False, str(e)
 
 def delete_user(username):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT role FROM users WHERE username=?", (username,))
-    target_role = cursor.fetchone()
-    
-    if target_role and target_role[0] == 'admin':
-        cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
-        if cursor.fetchone()[0] <= 1:
-            conn.close()
-            return False, "نمی‌توان آخرین مدیر سیستم را حذف کرد"
-            
-    try:
-        cursor.execute("DELETE FROM users WHERE username=?", (username,))
-        conn.commit()
-        conn.close()
-        return True, ""
-    except Exception as e:
-        conn.close()
-        return False, str(e)
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM users WHERE username=?", (username,))
+        target_role = cursor.fetchone()
+        
+        if target_role and target_role[0] == 'admin':
+            cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
+            if cursor.fetchone()[0] <= 1:
+                return False, "نمی‌توان آخرین مدیر سیستم را حذف کرد"
+                
+        try:
+            cursor.execute("DELETE FROM users WHERE username=?", (username,))
+            return True, ""
+        except Exception as e:
+            return False, str(e)
 
 def get_all_users():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, role, full_name FROM users")
-    users = cursor.fetchall()
-    conn.close()
-    return users
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, role, full_name FROM users")
+        return cursor.fetchall()
 
 def change_user_password(username, new_password):
     try:
         hashed = hash_password(new_password)
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET password = ? WHERE username = ?", (hashed, username))
-        conn.commit()
-        conn.close()
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET password = ? WHERE username = ?", (hashed, username))
         return True
     except:
         return False
@@ -173,12 +195,10 @@ def delete_all_records():
     if not messagebox.askyesno("Danger Zone", "Are you sure you want to DELETE ALL records?\n\nThis cannot be undone!"):
         return
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM visitors")
-        cursor.execute("DELETE FROM sqlite_sequence WHERE name='visitors'")
-        conn.commit()
-        conn.close()
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM visitors")
+            cursor.execute("DELETE FROM sqlite_sequence WHERE name='visitors'")
         messagebox.showinfo("Developer Mode", "Database has been completely cleared.")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to delete data: {e}")
@@ -212,12 +232,12 @@ def add_dummy_data():
                 "department": dept, "entry_time": entry_time_gregorian, "shamsi_date": shamsi_date
             })
         dummy_records.sort(key=lambda x: x['entry_time'])
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        for r in dummy_records:
-            cursor.execute('''INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)''', (r['visitor_name'], r['national_id'], r['employee_to_meet'], r['department'], r['entry_time'], r['shamsi_date']))
-        conn.commit()
-        conn.close()
+        
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            for r in dummy_records:
+                cursor.execute('''INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)''', (r['visitor_name'], r['national_id'], r['employee_to_meet'], r['department'], r['entry_time'], r['shamsi_date']))
+        
         messagebox.showinfo("Developer Mode", "100 Random Records (Full Data) Added Successfully!")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to generate data: {e}")

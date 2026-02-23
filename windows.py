@@ -607,19 +607,19 @@ def open_search_window(app):
     # Visual Goal:  [Last >>|]  [Next >]   [ 1 ]   [Prev <]  [First |<<]
     
     # 1. Last Page (⏭)
-    widgets.RoundedButton(controls_frame, text="⏭", command=lambda: change_page('last'), **btn_conf).pack(side=tk.RIGHT, padx=2)
+    widgets.RoundedButton(controls_frame, text="⏭", command=lambda: change_page('first'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
     # 2. Next Page (▶)
-    widgets.RoundedButton(controls_frame, text="▶", command=lambda: change_page('next'), **btn_conf).pack(side=tk.RIGHT, padx=2)
+    widgets.RoundedButton(controls_frame, text="▶", command=lambda: change_page('prev'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
     # 3. Page Number
     lbl_page_num.pack(side=tk.RIGHT, padx=10)
     
     # 4. Prev Page (◀)
-    widgets.RoundedButton(controls_frame, text="◀", command=lambda: change_page('prev'), **btn_conf).pack(side=tk.RIGHT, padx=2)
+    widgets.RoundedButton(controls_frame, text="◀", command=lambda: change_page('next'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
     # 5. First Page (⏮)
-    widgets.RoundedButton(controls_frame, text="⏮", command=lambda: change_page('first'), **btn_conf).pack(side=tk.RIGHT, padx=2)
+    widgets.RoundedButton(controls_frame, text="⏮", command=lambda: change_page('last'), **btn_conf).pack(side=tk.RIGHT, padx=2)
 
     # --- CORE FUNCTIONS ---
     def get_query_and_params(filters, count_only=False):
