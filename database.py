@@ -13,7 +13,6 @@ DB_PATH = config.DB_PATH
 DEPARTMENT_LIST = config.DEPARTMENT_LIST
 
 # --- CONNECTION POOLING SETUP ---
-# Thread-local storage to ensure each thread gets its own persistent connection
 _thread_local = threading.local()
 
 def _get_connection():
@@ -21,9 +20,7 @@ def _get_connection():
     Retrieves or creates a persistent connection for the current thread.
     """
     if not hasattr(_thread_local, "connection"):
-        # Create a new connection for this thread
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        # WAL mode improves concurrency (reading while writing)
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
         except: pass
@@ -51,10 +48,9 @@ class DBConnection:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
-            self.conn.rollback() # Error occurred, undo changes
+            self.conn.rollback()
         else:
-            self.conn.commit()   # Success, save changes
-        # We intentionally do NOT close the connection here
+            self.conn.commit()
 
 # --- HASHING UTILS ---
 def hash_password(password):
