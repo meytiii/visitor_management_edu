@@ -107,22 +107,15 @@ def auto_fill_department(employee_name):
     except: pass
 
 def update_employee_suggestions():
-    """Reads employee names, sorted by how often they receive visitors (Popularity)."""
+    """
+    Updates the autocomplete list for employees.
+    Uses the database cache to avoid performance hits.
+    """
     try:
-        conn = sqlite3.connect(config.DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT employee_to_meet, COUNT(*) as cnt 
-            FROM visitors 
-            WHERE employee_to_meet != '' 
-            GROUP BY employee_to_meet 
-            ORDER BY cnt DESC
-        ''')
-        names = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        
+        names = database.get_employee_suggestions() 
         entry_employee_to_meet.set_completion_list(names)
-    except: pass
+    except: 
+        pass
 
 def check_returning_visitor(event):
     nid = entry_national_id.get().strip()

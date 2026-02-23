@@ -4,6 +4,7 @@ import hashlib
 import binascii
 import os
 import threading
+import time
 from datetime import datetime
 import jdatetime
 from tkinter import messagebox
@@ -12,36 +13,28 @@ import config
 DB_PATH = config.DB_PATH
 DEPARTMENT_LIST = config.DEPARTMENT_LIST
 
+# --- CACHE CONFIGURATION ---
+_cache = {
+    "employees": {
+        "data": [], 
+        "timestamp": 0
+    }
+}
+CACHE_DURATION = 300  # = 5 Minutes
+
 # --- CONNECTION POOLING SETUP ---
 _thread_local = threading.local()
 
 def _get_connection():
-    """
-    Retrieves or creates a persistent connection for the current thread.
-    """
     if not hasattr(_thread_local, "connection"):
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
         except: pass
         _thread_local.connection = conn
-    
     return _thread_local.connection
 
 class DBConnection:
-    """
-    Context Manager for Database Access.
-    Usage:
-        with DBConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(...)
-    
-    Benefits:
-    - Reuses the persistent connection (High Performance).
-    - Automatically commits on success.
-    - Automatically rolls back on error.
-    - DOES NOT CLOSE the connection (keeps it 'pooled').
-    """
     def __enter__(self):
         self.conn = _get_connection()
         return self.conn
@@ -74,7 +67,6 @@ def setup_database():
     with DBConnection() as conn:
         cursor = conn.cursor()
         
-        # Migrations
         try: cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
         except sqlite3.OperationalError: pass
         
@@ -90,7 +82,7 @@ def setup_database():
                 created_by TEXT
             )''')
         
-        # Indexes (Performance)
+        # Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_national_id ON visitors (national_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_shamsi_date ON visitors (shamsi_date);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitor_name ON visitors (visitor_name);")
@@ -116,13 +108,42 @@ def setup_database():
         try: cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
         except sqlite3.OperationalError: pass
         
-        # Default Admin
         cursor.execute("SELECT count(*) FROM users WHERE role='admin'")
         if cursor.fetchone()[0] == 0:
             default_pass = hash_password("admin")
             cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
                            ("admin", default_pass, "admin", "مدیر سیستم"))
             print("Default Admin created")
+
+# --- CACHED DATA FETCHING ---
+def get_employee_suggestions(force_refresh=False):
+    """
+    Fetches employee names sorted by popularity.
+    Uses memory caching to avoid hitting the DB too often.
+    """
+    global _cache
+    now = time.time()
+    
+    if not force_refresh and (now - _cache["employees"]["timestamp"] < CACHE_DURATION):
+        return _cache["employees"]["data"]
+
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT employee_to_meet, COUNT(*) as cnt 
+                FROM visitors 
+                WHERE employee_to_meet != '' 
+                GROUP BY employee_to_meet 
+                ORDER BY cnt DESC
+            ''')
+            names = [row[0] for row in cursor.fetchall()]
+            
+            _cache["employees"]["data"] = names
+            _cache["employees"]["timestamp"] = now
+            return names
+    except:
+        return []
 
 # --- USER MANAGEMENT ---
 def authenticate_user(username, password):
@@ -133,10 +154,10 @@ def authenticate_user(username, password):
         
         if row:
             stored_hash, role, full_name_db = row
-            display_name = full_name_db if full_name_db else username
+            full_name = full_name_db if full_name_db else username
             
             if verify_password(stored_hash, password):
-                return True, role, display_name
+                return True, role, full_name
                 
     return False, None, None
 
