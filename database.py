@@ -39,12 +39,10 @@ def setup_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    try: 
-        cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
+    try: cursor.execute("ALTER TABLE visitors ADD COLUMN shamsi_date TEXT;")
     except sqlite3.OperationalError: pass
     
-    try:
-        cursor.execute("ALTER TABLE visitors ADD COLUMN created_by TEXT;")
+    try: cursor.execute("ALTER TABLE visitors ADD COLUMN created_by TEXT;")
     except sqlite3.OperationalError: pass
         
     cursor.execute('''
@@ -53,8 +51,15 @@ def setup_database():
             national_id TEXT NOT NULL, employee_to_meet TEXT NOT NULL,
             department TEXT NOT NULL, entry_time TEXT NOT NULL,
             shamsi_date TEXT, exit_time TEXT,
-            created_by TEXT  -- Added this for new installs
+            created_by TEXT
         )''')
+    
+    # --- PERFORMANCE INDEXES ---
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_national_id ON visitors (national_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_shamsi_date ON visitors (shamsi_date);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitor_name ON visitors (visitor_name);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employee ON visitors (employee_to_meet);")
+    # --------------------------------
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS shift_logs (
@@ -73,8 +78,7 @@ def setup_database():
             full_name TEXT
         )''')
     
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
+    try: cursor.execute("ALTER TABLE users ADD COLUMN full_name TEXT;")
     except sqlite3.OperationalError: pass
     
     # Default Admin
@@ -87,31 +91,6 @@ def setup_database():
 
     conn.commit()
     conn.close()
-
-# --- USER MANAGEMENT ---
-def create_user(username, password, full_name, role="guard"):
-    try:
-        hashed = hash_password(password)
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
-                       (username, hashed, role, full_name))
-        conn.commit()
-        conn.close()
-        return True, ""
-    except sqlite3.IntegrityError:
-        return False, "نام کاربری تکراری است"
-    except Exception as e:
-        return False, str(e)
-
-def get_all_users():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, role, full_name FROM users")
-    users = cursor.fetchall()
-    conn.close()
-    return users
-
 
 # --- USER MANAGEMENT ---
 def authenticate_user(username, password):
@@ -132,6 +111,20 @@ def authenticate_user(username, password):
             
     return False, None, None
 
+def create_user(username, password, full_name, role="guard"):
+    try:
+        hashed = hash_password(password)
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)", 
+                       (username, hashed, role, full_name))
+        conn.commit()
+        conn.close()
+        return True, ""
+    except sqlite3.IntegrityError:
+        return False, "نام کاربری تکراری است"
+    except Exception as e:
+        return False, str(e)
 
 def delete_user(username):
     conn = sqlite3.connect(DB_PATH)
@@ -154,6 +147,14 @@ def delete_user(username):
     except Exception as e:
         conn.close()
         return False, str(e)
+
+def get_all_users():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, role, full_name FROM users")
+    users = cursor.fetchall()
+    conn.close()
+    return users
 
 def change_user_password(username, new_password):
     try:
