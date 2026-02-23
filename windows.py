@@ -574,11 +574,11 @@ def open_search_window(app):
     tree.column("exit_time", width=70, anchor=tk.CENTER, minwidth=60)
     tree.column("created_by", width=130, anchor=tk.CENTER, minwidth=100)
 
-    # --- PAGINATION CONTROLS (Updated Layout & Style) ---
+    # --- PAGINATION CONTROLS ---
     pagination_frame = tk.Frame(search_win, bg=config.DEFAULT_BG_COLOR, pady=10)
     pagination_frame.pack(fill=tk.X)
     
-    # 1. Page Label (Far Right)
+    # 1. Page Label
     lbl_page_info = tk.Label(pagination_frame, text="صفحه 1", font=(FONT_MAIN, 12), bg=config.DEFAULT_BG_COLOR)
     lbl_page_info.pack(side=tk.RIGHT, padx=(10, 25))
     
@@ -589,7 +589,7 @@ def open_search_window(app):
         current_page = new_page
         fetch_and_display_records(current_filters)
 
-    # 2. Next Button (Right, next to label)
+    # 2. Next Button
     btn_next = widgets.RoundedButton(
         pagination_frame, 
         text="صفحه بعد >", 
@@ -602,7 +602,7 @@ def open_search_window(app):
     )
     btn_next.pack(side=tk.RIGHT, padx=5)
     
-    # 3. Previous Button (Right, next to Next button)
+    # 3. Previous Button
     btn_prev = widgets.RoundedButton(
         pagination_frame, 
         text="< صفحه قبل", 
