@@ -500,7 +500,12 @@ def open_search_window(app):
     try: search_win.iconbitmap('app_icon.ico')
     except Exception: pass
     search_win.title("مشاهده و جستجوی سوابق")
-    search_win.geometry("1300x750") # Made slightly wider for new column
+    search_win.geometry("1300x800") 
+    
+    # --- STATE VARIABLES ---
+    current_page = 1
+    items_per_page = 50
+    current_filters = {} 
     
     # --- FILTER FRAME ---
     search_frame = ttk.LabelFrame(search_win, text="فیلترهای جستجو", padding=(10, 10))
@@ -531,7 +536,6 @@ def open_search_window(app):
     v_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL)
     h_scroll = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL)
     
-    # ADDED: created_by
     columns = ("id", "visitor_name", "national_id", "employee_to_meet", "department", "entry_time", "shamsi_date", "exit_time", "created_by")
     
     style = ttk.Style()
@@ -556,7 +560,7 @@ def open_search_window(app):
         "entry_time": "ساعت ورود", 
         "shamsi_date": "تاریخ ورود", 
         "exit_time": "ساعت خروج",
-        "created_by": "کاربر ثبت کننده"  # <--- NEW HEADER
+        "created_by": "کاربر ثبت کننده"
     }
     for col, text in headings.items(): tree.heading(col, text=text)
     
@@ -568,27 +572,70 @@ def open_search_window(app):
     tree.column("entry_time", width=70, anchor=tk.CENTER, minwidth=60)
     tree.column("shamsi_date", width=90, anchor=tk.CENTER, minwidth=80)
     tree.column("exit_time", width=70, anchor=tk.CENTER, minwidth=60)
-    tree.column("created_by", width=130, anchor=tk.CENTER, minwidth=100) # <--- NEW COLUMN CONFIG
+    tree.column("created_by", width=130, anchor=tk.CENTER, minwidth=100)
+
+    # --- PAGINATION CONTROLS (Updated Layout & Style) ---
+    pagination_frame = tk.Frame(search_win, bg=config.DEFAULT_BG_COLOR, pady=10)
+    pagination_frame.pack(fill=tk.X)
+    
+    # 1. Page Label (Far Right)
+    lbl_page_info = tk.Label(pagination_frame, text="صفحه 1", font=(FONT_MAIN, 12), bg=config.DEFAULT_BG_COLOR)
+    lbl_page_info.pack(side=tk.RIGHT, padx=(10, 25))
+    
+    def change_page(delta):
+        nonlocal current_page
+        new_page = current_page + delta
+        if new_page < 1: return
+        current_page = new_page
+        fetch_and_display_records(current_filters)
+
+    # 2. Next Button (Right, next to label)
+    btn_next = widgets.RoundedButton(
+        pagination_frame, 
+        text="صفحه بعد >", 
+        command=lambda: change_page(1), 
+        width=110, height=35, 
+        radius=15,
+        bg=config.BLUE_COLOR,
+        hover_bg=config.BLUE_ACTIVE_COLOR,
+        font=(FONT_MAIN, 11)
+    )
+    btn_next.pack(side=tk.RIGHT, padx=5)
+    
+    # 3. Previous Button (Right, next to Next button)
+    btn_prev = widgets.RoundedButton(
+        pagination_frame, 
+        text="< صفحه قبل", 
+        command=lambda: change_page(-1), 
+        width=110, height=35, 
+        radius=15,
+        bg=config.BLUE_COLOR,
+        hover_bg=config.BLUE_ACTIVE_COLOR,
+        font=(FONT_MAIN, 11)
+    )
+    btn_prev.pack(side=tk.RIGHT, padx=5)
 
     # --- CORE FUNCTIONS ---
-    def get_query_and_params(filters):
-        # ADDED: created_by to SELECT
-        query = "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time, created_by FROM visitors WHERE 1=1"
+    def get_query_and_params(filters, count_only=False):
+        base_query = "SELECT count(*)" if count_only else "SELECT id, visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time, created_by"
+        base_query += " FROM visitors WHERE 1=1"
+        
         params = []
-        if filters.get("name"): query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
-        if filters.get("nid"): query += " AND national_id LIKE ?"; params.append(f"%{filters['nid']}%")
-        if filters.get("dept"): query += " AND department = ?"; params.append(filters['dept'])
+        if filters.get("name"): base_query += " AND visitor_name LIKE ?"; params.append(f"%{filters['name']}%")
+        if filters.get("nid"): base_query += " AND national_id LIKE ?"; params.append(f"%{filters['nid']}%")
+        if filters.get("dept"): base_query += " AND department = ?"; params.append(filters['dept'])
         
         y, m_name, d = filters.get("year"), filters.get("month_name"), filters.get("day")
-        if y: query += " AND shamsi_date LIKE ?"; params.append(f"{y}%")
+        if y: base_query += " AND shamsi_date LIKE ?"; params.append(f"{y}%")
         if m_name in config.PERSIAN_MONTHS:
             m_index = config.PERSIAN_MONTHS.index(m_name) + 1
             m = f"{m_index:02d}"
-            query += " AND shamsi_date LIKE ?"; params.append(f"%/{m}/%")
+            base_query += " AND shamsi_date LIKE ?"; params.append(f"%/{m}/%")
         if d:
             d_padded = d.zfill(2)
-            query += " AND shamsi_date LIKE ?"; params.append(f"%/{d_padded}")
-        return query, params
+            base_query += " AND shamsi_date LIKE ?"; params.append(f"%/{d_padded}")
+            
+        return base_query, params
 
     def populate_tree(records):
         for i in tree.get_children(): tree.delete(i)
@@ -598,46 +645,66 @@ def open_search_window(app):
                 display_time = dt_obj.strftime("%H:%M")
             except: display_time = record[5]
             
-            # Handle possible NULL in created_by (for old records)
             registrar = record[8] if len(record) > 8 and record[8] else "---"
             
             display_record = (
                 record[0], record[1], record[2], record[3], record[4], 
                 display_time, record[6] or "", record[7] or "", 
-                registrar # <--- NEW VALUE
+                registrar
             )
             tree.insert("", tk.END, values=display_record)
 
     def fetch_and_display_records(filters=None):
+        nonlocal current_page
         if filters is None: filters = {}
+        
         conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
-        query, params = get_query_and_params(filters)
-        query += " ORDER BY id DESC"
+        
+        count_query, count_params = get_query_and_params(filters, count_only=True)
+        cursor.execute(count_query, count_params)
+        total_records = cursor.fetchone()[0]
+        
+        query, params = get_query_and_params(filters, count_only=False)
+        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        
+        offset = (current_page - 1) * items_per_page
+        params.extend([items_per_page, offset])
+        
         cursor.execute(query, params)
-        populate_tree(cursor.fetchall())
+        records = cursor.fetchall()
+        
+        populate_tree(records)
         conn.close()
+        
+        start_idx = offset + 1 if total_records > 0 else 0
+        end_idx = min(offset + items_per_page, total_records)
+        lbl_page_info.config(text=f"نمایش {start_idx} تا {end_idx} از {total_records} رکورد (صفحه {current_page})")
 
     def search_action(): 
-        fetch_and_display_records({"name": entry_search_name.get(), "nid": entry_search_nid.get(), "year": combo_year.get(), "month_name": combo_month.get(), "day": combo_day.get(), "dept": combo_search_dept.get()})
+        nonlocal current_filters, current_page
+        current_page = 1 
+        current_filters = {
+            "name": entry_search_name.get(), "nid": entry_search_nid.get(), 
+            "year": combo_year.get(), "month_name": combo_month.get(), 
+            "day": combo_day.get(), "dept": combo_search_dept.get()
+        }
+        fetch_and_display_records(current_filters)
 
     def reset_action():
         entry_search_name.delete(0, tk.END); entry_search_nid.delete(0, tk.END)
         combo_year.set(""); combo_month.set(""); combo_day.set(""); combo_search_dept.set("")
-        fetch_and_display_records({})
+        search_action()
 
     # --- EXCEL EXPORT ---
     def export_to_excel():
-        filters = {
-            "name": entry_search_name.get(), "nid": entry_search_nid.get(),
-            "year": combo_year.get(), "month_name": combo_month.get(),
-            "day": combo_day.get(), "dept": combo_search_dept.get()
-        }
         conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
-        query, params = get_query_and_params(filters)
+        query, params = get_query_and_params(current_filters, count_only=False)
         query += " ORDER BY id DESC"
+        
         cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
+        
         if not rows:
             messagebox.showwarning("هشدار", "رکوردی برای خروجی گرفتن وجود ندارد")
             return
@@ -799,7 +866,7 @@ def open_search_window(app):
                 conn.close()
                 
                 popup.destroy()
-                search_action()
+                fetch_and_display_records(current_filters)
                 messagebox.showinfo("موفق", f"خروج {visitor_name} در ساعت {exit_time_str} ثبت شد", parent=search_win)
                 
             except Exception as e: 
@@ -848,7 +915,8 @@ def open_search_window(app):
     tk.Button(buttons_frame, text="نمایش همه", command=reset_action, font=(FONT_MAIN, 12), width=10).pack(side=tk.RIGHT, padx=5)
     
     tk.Button(buttons_frame, text="خروجی اکسل", command=export_to_excel, bg="#2E7D32", fg="white", font=(FONT_MAIN, 12, "bold"), width=15).pack(side=tk.LEFT, padx=5)
-    reset_action()
+    
+    search_action()
 
 def open_developer_mode(app):
     ensure_fonts()
