@@ -1,7 +1,7 @@
 import os
 from tkinter import messagebox
 
-APP_VERSION = "2.0.3"
+APP_VERSION = "2.1.2"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
