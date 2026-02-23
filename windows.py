@@ -572,15 +572,15 @@ def open_search_window(app):
     pagination_frame = tk.Frame(search_win, bg=config.DEFAULT_BG_COLOR, pady=10)
     pagination_frame.pack(fill=tk.X)
     
-    # 1. Info Label (Far Right)
+    # Info Label (Far Right)
     lbl_info = tk.Label(pagination_frame, text="", font=(FONT_MAIN, 11), bg=config.DEFAULT_BG_COLOR)
-    lbl_info.pack(side=tk.RIGHT, padx=20)
+    lbl_info.pack(side=tk.RIGHT, padx=(10, 20))
     
-    # 2. Controls Container (Center/Left)
+    # Controls Group (Packed to the Right, to be next to the info label)
     controls_frame = tk.Frame(pagination_frame, bg=config.DEFAULT_BG_COLOR)
-    controls_frame.pack(side=tk.LEFT, padx=20)
+    controls_frame.pack(side=tk.RIGHT, padx=10)
     
-    # Page Number Label (Center of buttons)
+    # Page Number Display
     lbl_page_num = tk.Label(controls_frame, text="1", font=(FONT_MAIN, 14, "bold"), bg=config.DEFAULT_BG_COLOR, width=4)
     
     def change_page(action):
@@ -600,25 +600,26 @@ def open_search_window(app):
             
         fetch_and_display_records(current_filters)
 
-    # Button Styling
-    btn_style = {"width": 50, "height": 35, "radius": 10, "bg": config.BLUE_COLOR, "hover_bg": config.BLUE_ACTIVE_COLOR, "font": (FONT_MAIN, 12, "bold")}
+    icon_font = ("Segoe UI Symbol", 14) 
+    btn_conf = {"width": 45, "height": 35, "radius": 15, "bg": "#B4B4B4", "hover_bg": "#919191", "font": icon_font}
     
-    # Layout: |<  <  1  >  >|
+    # LAYOUT ORDER (PACKING RIGHT TO LEFT)
+    # Visual Goal:  [Last >>|]  [Next >]   [ 1 ]   [Prev <]  [First |<<]
     
-    # Last Page Button (|<)
-    widgets.RoundedButton(controls_frame, text="|<", command=lambda: change_page('last'), **btn_style).pack(side=tk.LEFT, padx=3)
+    # 1. Last Page (⏭)
+    widgets.RoundedButton(controls_frame, text="⏭", command=lambda: change_page('last'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
-    # Prev Button (<)
-    widgets.RoundedButton(controls_frame, text="<", command=lambda: change_page('prev'), **btn_style).pack(side=tk.LEFT, padx=3)
+    # 2. Next Page (▶)
+    widgets.RoundedButton(controls_frame, text="▶", command=lambda: change_page('next'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
-    # Page Number
-    lbl_page_num.pack(side=tk.LEFT, padx=5)
+    # 3. Page Number
+    lbl_page_num.pack(side=tk.RIGHT, padx=10)
     
-    # Next Button (>)
-    widgets.RoundedButton(controls_frame, text=">", command=lambda: change_page('next'), **btn_style).pack(side=tk.LEFT, padx=3)
+    # 4. Prev Page (◀)
+    widgets.RoundedButton(controls_frame, text="◀", command=lambda: change_page('prev'), **btn_conf).pack(side=tk.RIGHT, padx=2)
     
-    # First Page Button (>|)
-    widgets.RoundedButton(controls_frame, text=">|", command=lambda: change_page('first'), **btn_style).pack(side=tk.LEFT, padx=3)
+    # 5. First Page (⏮)
+    widgets.RoundedButton(controls_frame, text="⏮", command=lambda: change_page('first'), **btn_conf).pack(side=tk.RIGHT, padx=2)
 
     # --- CORE FUNCTIONS ---
     def get_query_and_params(filters, count_only=False):
