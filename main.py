@@ -10,7 +10,7 @@ from datetime import datetime
 import jdatetime
 from PIL import Image, ImageTk
 
-# Import local modules
+# Local modules
 import config
 import database
 import utils
@@ -18,7 +18,7 @@ import widgets
 import windows
 import printer
 
-# --- Main Application Setup (USING TTKBOOTSTRAP) ---
+# --- Main Application Setup ---
 app = tb.Window(themename="lumen") 
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {config.APP_VERSION}")
 app.geometry("1050x600")
@@ -238,7 +238,6 @@ def submit_visitor():
         messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
 # --- CENTRAL CARD CONTAINER ---
-# FIX: Tighter padding and shifted up (rely=0.46)
 card_frame = tb.Frame(app, padding=15)
 card_frame.place(relx=0.5, rely=0.46, anchor="center", width=420, height=480)
 
@@ -271,7 +270,7 @@ entry_employee_to_meet.grid(row=3, column=0, sticky="ew", padx=(10, 5), pady=6)
 combo_department.grid(row=4, column=0, sticky="ew", padx=(10, 5), pady=6)
 card_frame.grid_columnconfigure(0, weight=1)
 
-# 3. Buttons (Tighter spacing)
+# 3. Buttons
 btn_frame = tb.Frame(card_frame)
 btn_frame.grid(row=5, column=0, columnspan=2, pady=(15, 10), sticky="ew")
 
@@ -308,12 +307,11 @@ try:
 except NameError: pass
 
 # --- STATUS BAR & QUOTE SYSTEM ---
-# FIX: Reduced padding and font size so it doesn't take up the whole screen
 status_bar = tb.Label(
     app, 
     text="  با سلام - به سامانه مدیریت مراجعین (اداره حراست) خوش آمدید", 
     anchor=tk.E, 
-    font=(FONT_MAIN, 10), 
+    font=(FONT_MAIN, 12), 
     padding=2,
     bootstyle="inverse-light" 
 )
