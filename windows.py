@@ -145,7 +145,6 @@ def open_user_manager(parent):
     action_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=15, pady=15)
     action_frame.pack_propagate(False)
     
-    # FIX: Tighter spacing so the remove button isn't pushed off the bottom
     tb.Label(action_frame, text="افزودن کاربر جدید", font=(FONT_MAIN, 14, "bold"), background="white").pack(pady=(15, 10))
     
     def create_input(label_text, show=None):
@@ -502,7 +501,7 @@ def open_search_window(app):
         
         popup = tb.Toplevel(search_win)
         popup.title("ثبت خروج")
-        popup.geometry("500x500") # Made the window slightly taller to fit everything
+        popup.geometry("500x500")
         try: popup.iconbitmap(default='app_icon.ico')
         except: pass
         
@@ -511,7 +510,6 @@ def open_search_window(app):
         tb.Label(p_frame, text="ثبت خروج", font=(FONT_MAIN, 16, "bold"), bootstyle=SUCCESS).pack(pady=(0,5))
         tb.Label(p_frame, text=f": {visitor_name}", font=(FONT_MAIN, 13)).pack(pady=(0,15))
         
-        # --- RESTORED 1: Date Mismatch Warning ---
         current_shamsi = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
         if entry_shamsi_date != current_shamsi:
             warn_lbl = tb.Label(p_frame, text=f"⚠️ تاریخ ورود: {entry_shamsi_date} (امروز نیست!)", 
@@ -525,7 +523,6 @@ def open_search_window(app):
         
         h_var, m_var = tk.StringVar(value=datetime.now().strftime("%H")), tk.StringVar(value=datetime.now().strftime("%M"))
         
-        # --- RESTORED 2: "Current Time" Button & Layout ---
         def set_current_time():
             now = datetime.now()
             h_var.set(now.strftime("%H"))
@@ -536,7 +533,6 @@ def open_search_window(app):
         tb.Label(t_frame, text=":", font=(FONT_MAIN, 14, "bold")).pack(side=tk.RIGHT)
         tb.Combobox(t_frame, textvariable=h_var, values=[str(i).zfill(2) for i in range(7, 21)], width=4, font=(FONT_MAIN, 12), justify='center', state='readonly').pack(side=tk.RIGHT, padx=5)
         
-        # --- RESTORED 3: Entry Info Panel ---
         try:
             entry_time_str = vals[5]
             entry_time_only = entry_time_str.split(' ')[1][:5] if ' ' in entry_time_str else entry_time_str
@@ -550,7 +546,6 @@ def open_search_window(app):
             minute = m_var.get()
             if not hour or not minute: return messagebox.showerror("خطا", "لطفاً ساعت و دقیقه را انتخاب کنید", parent=popup)
             
-            # --- RESTORED 4: Time Logic Warnings ---
             try:
                 if ' ' in vals[5]:
                     entry_h, entry_m = map(int, vals[5].split(' ')[1][:5].split(':'))

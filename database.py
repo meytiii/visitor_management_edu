@@ -20,7 +20,7 @@ _cache = {
         "timestamp": 0
     }
 }
-CACHE_DURATION = 300  # = 5 Minutes
+CACHE_DURATION = 300
 
 # --- CONNECTION POOLING SETUP ---
 _thread_local = threading.local()
