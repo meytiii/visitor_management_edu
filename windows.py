@@ -343,7 +343,7 @@ def open_search_window(app):
     combo_day.grid(row=1, column=4, sticky=tk.E, padx=(0, 5))
     combo_month = tb.Combobox(search_frame, values=[""] + config.PERSIAN_MONTHS, justify='center', width=10, state='readonly')
     combo_month.grid(row=1, column=4, sticky=tk.E, padx=(0, 55))
-    combo_year = tb.Combobox(search_frame, values=[""] + [str(i) for i in range(1400, 1411)], justify='center', width=5, state='readonly')
+    combo_year = tb.Combobox(search_frame, values=[""] + [str(i) for i in range(1404, 1451)], justify='center', width=5, state='readonly')
     combo_year.grid(row=1, column=4, sticky=tk.W, padx=(0, 0))
     
     tb.Label(search_frame, text=": واحد").grid(row=1, column=3, sticky=tk.E, padx=(15, 5), pady=5)
