@@ -34,11 +34,11 @@ def ensure_fonts():
         style = tb.Style()
         style.configure('TButton', font=(FONT_MAIN, 12))
         
-        style.configure('Treeview', font=(FONT_TABLE, 12), rowheight=45) 
-        style.configure('Treeview.Heading', font=(FONT_MAIN, 11))
+        style.configure('Treeview', font=(FONT_TABLE, 12, "bold"), rowheight=45) 
+        style.configure('Treeview.Heading', font=(FONT_MAIN, 11, "bold"))
         
-        style.configure('primary.Treeview', font=(FONT_TABLE, 12), rowheight=45) 
-        style.configure('primary.Treeview.Heading', font=(FONT_MAIN, 11))
+        style.configure('primary.Treeview', font=(FONT_TABLE, 12, "bold"), rowheight=45) 
+        style.configure('primary.Treeview.Heading', font=(FONT_MAIN, 11, "bold"))
         
         _fonts_checked = True
     except: pass
