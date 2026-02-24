@@ -604,7 +604,7 @@ def open_search_window(app):
     btn_conf = {"width": 45, "height": 35, "radius": 15, "bg": "#B4B4B4", "hover_bg": "#919191", "font": icon_font}
     
     # LAYOUT ORDER (PACKING RIGHT TO LEFT)
-    # Visual Goal:  [Last >>|]  [Next >]   [ 1 ]   [Prev <]  [First |<<]
+    # [Last >>|]  [Next >]   [ 1 ]   [Prev <]  [First |<<]
     
     # 1. Last Page (⏭)
     widgets.RoundedButton(controls_frame, text="⏭", command=lambda: change_page('first'), **btn_conf).pack(side=tk.RIGHT, padx=2)
