@@ -195,11 +195,11 @@ def show_daily_stats_ui(parent_win):
     ensure_fonts()
     stats_win = tb.Toplevel(parent_win)
     stats_win.title("آمار تردد")
-    stats_win.geometry("400x350")
-    try: stats_win.iconbitmap('app_icon.ico')
+    stats_win.geometry("420x420")
+    try: stats_win.iconbitmap(default='app_icon.ico')
     except: pass
     
-    main_frame = tb.Frame(stats_win, padding=20)
+    main_frame = tb.Frame(stats_win, padding=15)
     main_frame.pack(fill=tk.BOTH, expand=True)
 
     tb.Label(main_frame, text=":تاریخ مورد نظر را وارد کنید", font=(FONT_MAIN, 12, "bold")).pack(pady=(10, 15))
@@ -213,7 +213,7 @@ def show_daily_stats_ui(parent_win):
     ent_year = tb.Entry(date_frame, justify='center', width=7, font=(FONT_MAIN, 11)); ent_year.pack(side=tk.RIGHT, padx=2)
     
     result_lbl = tb.Label(main_frame, text="", font=(FONT_MAIN, 12), justify="center", bootstyle=INFO)
-    result_lbl.pack(pady=25)
+    result_lbl.pack(pady=15)
 
     def calculate(target_date_str=None):
         if not target_date_str:
@@ -238,9 +238,9 @@ def show_daily_stats_ui(parent_win):
         calculate(now_j.strftime("%Y/%m/%d"))
 
     btn_frame = tb.Frame(main_frame)
-    btn_frame.pack(fill=tk.X, pady=10)
-    tb.Button(btn_frame, text="امروز", command=set_today, bootstyle=WARNING).pack(side=tk.LEFT, expand=True, padx=5, fill=tk.X)
-    tb.Button(btn_frame, text="محاسبه", command=lambda: calculate(), bootstyle=PRIMARY).pack(side=tk.LEFT, expand=True, padx=5, fill=tk.X)
+    btn_frame.pack(fill=tk.X, pady=(10, 0))
+    tb.Button(btn_frame, text="امروز", command=set_today, bootstyle=WARNING).pack(side=tk.LEFT, expand=True, padx=5, fill=tk.X, ipady=4)
+    tb.Button(btn_frame, text="محاسبه", command=lambda: calculate(), bootstyle=PRIMARY).pack(side=tk.LEFT, expand=True, padx=5, fill=tk.X, ipady=4)
 
 def show_heatmap_analytics(app):
     ensure_fonts()
