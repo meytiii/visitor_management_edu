@@ -314,58 +314,6 @@ def show_heatmap_analytics(app):
     tb.Button(filter_frame, text="حذف فیلترها", command=reset_filters, bootstyle=(DANGER, OUTLINE)).pack(side=tk.LEFT, padx=5)
     update_chart()
 
-def open_shift_log_window(app):
-    ensure_fonts()
-    log_win = tb.Toplevel(app)
-    log_win.title("دفتر ثبت وقایع و گزارشات")
-    log_win.geometry("700x550")
-    try: log_win.iconbitmap('app_icon.ico')
-    except: pass
-    
-    list_frame = tb.LabelFrame(log_win, text="سوابق وقایع ثبت شده", padding=15, bootstyle=PRIMARY)
-    list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
-    
-    scrollbar = tb.Scrollbar(list_frame, orient=tk.VERTICAL)
-    log_list = tk.Listbox(list_frame, font=(FONT_TABLE, 12), height=10, yscrollcommand=scrollbar.set, justify='right', bd=0)
-    scrollbar.config(command=log_list.yview)
-    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    log_list.pack(fill=tk.BOTH, expand=True)
-    
-    input_frame = tb.LabelFrame(log_win, text="ثبت گزارش جدید", padding=15, bootstyle=INFO)
-    input_frame.pack(fill=tk.X, padx=15, pady=15, side=tk.BOTTOM)
-    tb.Label(input_frame, text=":شرح واقعه", font=(FONT_MAIN, 11)).pack(anchor=tk.E)
-    
-    txt_input = tk.Text(input_frame, height=3, font=(FONT_MAIN, 11), bd=1, relief="solid")
-    txt_input.tag_configure("right", justify='right')
-    txt_input.pack(fill=tk.X, pady=5)
-    txt_input.bind("<KeyRelease>", lambda e: txt_input.tag_add("right", "1.0", "end"))
-    
-    def load_logs():
-        log_list.delete(0, tk.END)
-        try:
-            conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
-            cursor.execute("SELECT shamsi_date, created_at, event_text FROM shift_logs ORDER BY id DESC")
-            for row in cursor.fetchall():
-                log_list.insert(tk.END, f"{row[2]}   |   [{row[0]} - {row[1].split(' ')[1][:5]}]")
-            conn.close()
-        except: pass
-        
-    def save_log():
-        text = txt_input.get("1.0", tk.END).strip()
-        if len(text) < 2: return
-        now = datetime.now()
-        try:
-            conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
-            cursor.execute("INSERT INTO shift_logs (event_text, created_at, shamsi_date) VALUES (?, ?, ?)", 
-                           (text, now.strftime("%Y-%m-%d %H:%M:%S"), jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")))
-            conn.commit(); conn.close()
-            txt_input.delete("1.0", tk.END); load_logs()
-            messagebox.showinfo("موفق", "گزارش ثبت شد")
-        except: pass
-
-    tb.Button(input_frame, text="ثبت گزارش", bootstyle=SUCCESS, command=save_log).pack(anchor=tk.W, pady=5)
-    load_logs()
-
 def open_search_window(app):
     ensure_fonts()
     search_win = tb.Toplevel(app)

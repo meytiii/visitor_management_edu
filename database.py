@@ -87,14 +87,6 @@ def setup_database():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_shamsi_date ON visitors (shamsi_date);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitor_name ON visitors (visitor_name);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_employee ON visitors (employee_to_meet);")
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS shift_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_text TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                shamsi_date TEXT NOT NULL
-            )''')
             
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (

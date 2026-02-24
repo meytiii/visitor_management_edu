@@ -291,10 +291,6 @@ def setup_dashboard(username, role, full_name):
         tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app))
         menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
     
-    guard_menu = tk.Menu(menubar, tearoff=0)
-    guard_menu.add_command(label="دفتر ثبت وقایع", command=lambda: windows.open_shift_log_window(app))
-    menubar.add_cascade(label="امور نگهبانی", menu=guard_menu)
-    
     user_menu = tk.Menu(menubar, tearoff=0)
     def logout():
         for widget in app.winfo_children():
