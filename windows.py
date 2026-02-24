@@ -369,11 +369,12 @@ def open_search_window(app):
                 "department": "واحد", "entry_time": "ساعت ورود", "shamsi_date": "تاریخ ورود", "exit_time": "ساعت خروج", "created_by": "کاربر ثبت کننده"}
     for col, text in headings.items(): tree.heading(col, text=text)
     
-    tree.column("id", width=60, anchor=tk.CENTER); tree.column("visitor_name", width=160, anchor=tk.E)
-    tree.column("national_id", width=100, anchor=tk.CENTER); tree.column("employee_to_meet", width=140, anchor=tk.E)
-    tree.column("department", width=120, anchor=tk.E); tree.column("entry_time", width=70, anchor=tk.CENTER)
+    tree.column("id", width=60, anchor=tk.CENTER); tree.column("visitor_name", width=160, anchor=tk.CENTER)
+    tree.column("national_id", width=100, anchor=tk.CENTER); tree.column("employee_to_meet", width=140, anchor=tk.CENTER)
+    tree.column("department", width=120, anchor=tk.CENTER); tree.column("entry_time", width=70, anchor=tk.CENTER)
     tree.column("shamsi_date", width=90, anchor=tk.CENTER); tree.column("exit_time", width=70, anchor=tk.CENTER)
     tree.column("created_by", width=130, anchor=tk.CENTER)
+
 
     pagination_frame = tb.Frame(search_win, padding=10)
     pagination_frame.pack(fill=tk.X)
