@@ -77,13 +77,14 @@ def show_login_screen(app, on_success_callback):
     try: login_win.iconbitmap('app_icon.ico')
     except: pass
 
-    canvas.create_text(200, 40, text="سامانه مدیریت مراجعین", fill="#ffffff", font=(FONT_MAIN, 16, "bold"))
+    canvas.create_text(200, 40, text="سامانه مدیریت مراجعین", fill="#d6f7fd", font=(FONT_MAIN, 16, "bold"))
     
-    canvas.create_text(200, 90, text=":نام کاربری", fill="#f0f0f0", font=(FONT_MAIN, 12))
-    ent_user = tb.Entry(login_win, justify='center', font=(FONT_MAIN, 12))
+    canvas.create_text(200, 90, text=":نام کاربری", fill="#fffbda", font=(FONT_MAIN, 12))
+    ent_user = tb.Entry(login_win, justify='center', font=(FONT_MAIN, 12)
+    )
     canvas.create_window(200, 120, window=ent_user, width=200, height=35)
     
-    canvas.create_text(200, 160, text=":رمز عبور", fill="#f0f0f0", font=(FONT_MAIN, 12))
+    canvas.create_text(200, 160, text=":رمز عبور", fill="#fffbda", font=(FONT_MAIN, 12))
     ent_pass = tb.Entry(login_win, show="●", justify='center', font=(FONT_MAIN, 12))
     canvas.create_window(200, 190, window=ent_pass, width=200, height=35)
     
@@ -155,7 +156,7 @@ def open_user_manager(parent):
 
     new_fullname_ent = create_input(":نام و نام خانوادگی")
     new_user_ent = create_input(":نام کاربری")
-    new_pass_ent = create_input(":رمز عبور", show="●") 
+    new_pass_ent = create_input(":رمز عبور", show="●")
     
     tb.Label(action_frame, text=":نقش کاربری", font=(FONT_MAIN, 11), background="white").pack(anchor="e", pady=(10, 5), padx=20)
     role_var = tk.StringVar(value="guard")
