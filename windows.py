@@ -6,11 +6,15 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import jdatetime
+import os
+from PIL import Image, ImageTk
+
+import matplotlib
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = ['Tahoma', 'Arial', 'DejaVu Sans']
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import os
-from PIL import Image, ImageTk
 
 import config
 import database
@@ -65,26 +69,27 @@ def show_login_screen(app, on_success_callback):
     canvas.pack(fill="both", expand=True)
     canvas.configure(bg="#2E3B4E")
     
-    if os.path.exists("login.png"):
+    bg_path = utils.resource_path("login.png")
+    if os.path.exists(bg_path):
         try:
-            pil_image = Image.open("login.png")
+            pil_image = Image.open(bg_path)
             pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
             bg_image_obj = ImageTk.PhotoImage(pil_image)
             canvas.create_image(0, 0, image=bg_image_obj, anchor="nw")
             login_win.bg_image_obj = bg_image_obj 
         except Exception as e: pass
 
-    try: login_win.iconbitmap('app_icon.ico')
+    try: login_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
 
-    canvas.create_text(200, 40, text="سامانه مدیریت مراجعین", fill="#d6f7fd", font=(FONT_MAIN, 16, "bold"))
+    canvas.create_text(200, 40, text="سامانه مدیریت مراجعین💻", fill="#d6f7fd", font=(FONT_MAIN, 16, "bold"))
     
-    canvas.create_text(200, 90, text=":نام کاربری", fill="#fffbda", font=(FONT_MAIN, 12))
+    canvas.create_text(200, 90, text=":نام کاربری👤", fill="#fffbda", font=(FONT_MAIN, 12))
     ent_user = tb.Entry(login_win, justify='center', font=(FONT_MAIN, 12)
     )
     canvas.create_window(200, 120, window=ent_user, width=200, height=35)
     
-    canvas.create_text(200, 160, text=":رمز عبور", fill="#fffbda", font=(FONT_MAIN, 12))
+    canvas.create_text(200, 160, text=":رمز عبور🔑", fill="#fffbda", font=(FONT_MAIN, 12))
     ent_pass = tb.Entry(login_win, show="●", justify='center', font=(FONT_MAIN, 12))
     canvas.create_window(200, 190, window=ent_pass, width=200, height=35)
     
@@ -93,30 +98,39 @@ def show_login_screen(app, on_success_callback):
         p = ent_pass.get().strip()
         success, role, full_name = database.authenticate_user(u, p)
         if success:
+            database.log_audit("login_success", user=u)
             login_win.destroy()
             on_success_callback(u, role, full_name)
         else:
+            database.log_audit("login_failed", user=u)
             messagebox.showerror("خطا", "نام کاربری یا رمز عبور اشتباه است", parent=login_win)
             ent_pass.delete(0, tk.END)
 
-    btn_login = tb.Button(login_win, text="ورود", command=do_login, bootstyle=SUCCESS)
+    btn_login = tb.Button(login_win, text="ورود🚪", command=do_login, bootstyle=SUCCESS)
     canvas.create_window(200, 260, window=btn_login, width=150, height=40)
-    
-    login_win.protocol("WM_DELETE_WINDOW", lambda: app.destroy())
+
+    def on_login_window_close():
+        database.log_audit("app_closed", user=getattr(app, "current_user", None))
+        app.destroy()
+
+    login_win.protocol("WM_DELETE_WINDOW", on_login_window_close)
+
     login_win.bind('<Return>', lambda e: do_login())
     ent_user.focus()
 
-def open_user_manager(parent):
+def open_user_manager(parent, app=None, current_user=None):
     ensure_fonts()
     um_win = tb.Toplevel(parent)
     um_win.title("مدیریت کاربران")
     um_win.geometry("750x550")
-    try: um_win.iconbitmap('app_icon.ico')
+    um_win.resizable(False,False)
+    try: um_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
 
-    if os.path.exists("user_management.png"):
+    bg_path = utils.resource_path("user_management.png")
+    if os.path.exists(bg_path):
         try:
-            original_img = Image.open("user_management.png")
+            original_img = Image.open(bg_path)
             resized_img = original_img.resize((750, 550), Image.Resampling.LANCZOS)
             bg_photo = ImageTk.PhotoImage(resized_img)
             bg_label = tk.Label(um_win, image=bg_photo)
@@ -184,10 +198,26 @@ def open_user_manager(parent):
         sel = user_list.curselection()
         if not sel: return
         username = user_list.get(sel[0]).split("  (")[-1].replace(")", "").strip()
-        if messagebox.askyesno("حذف", f"آیا از حذف کاربر {username} مطمئن هستید؟", parent=um_win):
+
+        if current_user and username == current_user:
+            messagebox.showwarning("خطا", ".نمی‌توانید حساب کاربری خود را حذف کنید", parent=um_win)
+            return
+
+        if messagebox.askyesno("حذف", f"{username} آیا از حذف کاربر مطمئن هستید؟", parent=um_win):
             ok, msg = database.delete_user(username)
-            if ok: refresh_list()
-            else: messagebox.showerror("خطا", msg, parent=um_win)
+            if ok:
+                refresh_list()
+                if app and current_user and username == current_user:
+                    um_win.destroy()
+                    parent.destroy()
+                    app.current_user = None
+                    from windows import show_login_screen
+                    import main
+                    show_login_screen(app, main.setup_dashboard)
+            else:
+                messagebox.showerror("خطا", msg, parent=um_win)
+
+
 
     tb.Button(action_frame, text="حذف کاربر انتخاب شده", command=delete_selected, bootstyle=(DANGER, OUTLINE)).pack(fill=tk.X, padx=20)
 
@@ -196,7 +226,8 @@ def show_daily_stats_ui(parent_win):
     stats_win = tb.Toplevel(parent_win)
     stats_win.title("آمار تردد")
     stats_win.geometry("420x420")
-    try: stats_win.iconbitmap(default='app_icon.ico')
+    stats_win.resizable(False,False)
+    try: stats_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
     
     main_frame = tb.Frame(stats_win, padding=15)
@@ -247,7 +278,8 @@ def show_heatmap_analytics(app):
     analytics_win = tb.Toplevel(app)
     analytics_win.title("تحلیل آماری تردد")
     analytics_win.geometry("900x650")
-    try: analytics_win.iconbitmap('app_icon.ico')
+    analytics_win.resizable(False,False)
+    try: analytics_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
     
     filter_frame = tb.Frame(analytics_win, padding=10)
@@ -272,39 +304,46 @@ def show_heatmap_analytics(app):
         y, m_name, d = cb_year.get(), cb_month.get(), cb_day.get()
         query = "SELECT strftime('%H', entry_time) as hour, COUNT(*) FROM visitors WHERE 1=1"
         params = []
-        title_context = "کل ادوار" 
+        title_context = "کل ادوار"
         if y: query += " AND shamsi_date LIKE ?"; params.append(f"{y}%"); title_context = f"سال {y}"
         if m_name in config.PERSIAN_MONTHS:
             m_str = f"{(config.PERSIAN_MONTHS.index(m_name) + 1):02d}"
             query += " AND shamsi_date LIKE ?"; params.append(f"%/{m_str}/%"); title_context += f" - {m_name}"
         if d: query += " AND shamsi_date LIKE ?"; params.append(f"%/{d.zfill(2)}"); title_context += f" - روز {d}"
         query += " GROUP BY hour ORDER BY hour"
-        
+
         try:
             conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
             cursor.execute(query, params)
             data = cursor.fetchall(); conn.close()
         except Exception as e: return
-        
+
         if not data:
             tb.Label(chart_container, text="اطلاعاتی با این فیلتر یافت نشد", font=(FONT_MAIN, 14), bootstyle=SECONDARY).pack(pady=50)
             return
-            
+
         hours_found, counts_found = [row[0] for row in data], [row[1] for row in data]
-        full_hours = [f"{h:02d}" for h in range(7, 20)] 
+        full_hours = [f"{h:02d}" for h in range(7, 20)]
         full_counts = [counts_found[hours_found.index(h)] if h in hours_found else 0 for h in full_hours]
-        
+
+        import matplotlib
+        matplotlib.rcParams['font.family'] = 'Tahoma'  # prevents missing Latin glyph warnings on tick labels
+
         fig = Figure(figsize=(8, 5), dpi=100)
+        fig.patch.set_facecolor('#ffffff')
         ax = fig.add_subplot(111)
         bars = ax.bar(full_hours, full_counts, color='#2596be', width=0.6, zorder=3)
-        ax.set_title(utils.make_farsi(f"تحلیل تردد - {title_context}"), fontsize=14, fontname=FONT_TABLE)
+        ax.set_title(utils.make_farsi(f"تحلیل تردد - {title_context}"), fontsize=14, fontname='Tahoma')
         ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
-        
+
         for bar in bars:
-            if bar.get_height() > 0: ax.text(bar.get_x() + bar.get_width()/2., bar.get_height(), f'{int(bar.get_height())}', ha='center', va='bottom', fontsize=10)
+            if bar.get_height() > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., bar.get_height(), f'{int(bar.get_height())}',
+                ha='center', va='bottom', fontsize=10)
         canvas = FigureCanvasTkAgg(fig, master=chart_container)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
 
     def reset_filters():
         cb_year.set(""); cb_month.set(""); cb_day.set("")
@@ -317,7 +356,7 @@ def show_heatmap_analytics(app):
 def open_search_window(app):
     ensure_fonts()
     search_win = tb.Toplevel(app)
-    try: search_win.iconbitmap('app_icon.ico')
+    try: search_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
     search_win.title("مشاهده و جستجوی سوابق")
     search_win.geometry("1300x800") 
@@ -503,7 +542,7 @@ def open_search_window(app):
         popup = tb.Toplevel(search_win)
         popup.title("ثبت خروج")
         popup.geometry("500x500")
-        try: popup.iconbitmap(default='app_icon.ico')
+        try: popup.iconbitmap(utils.resource_path('app_icon.ico'))
         except: pass
         
         p_frame = tb.Frame(popup, padding=30)
@@ -559,9 +598,21 @@ def open_search_window(app):
                 
             exit_time = f"{hour}:{minute}"
             try:
-                conn = sqlite3.connect(config.DB_PATH); cursor = conn.cursor()
-                cursor.execute("UPDATE visitors SET exit_time = ? WHERE id = ?", (exit_time, visitor_id))
-                conn.commit(); conn.close()
+                with database.DBConnection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "UPDATE visitors SET exit_time = ? WHERE id = ?",
+                        (exit_time, visitor_id)
+                    )              
+                conn.commit()
+                database.log_audit(
+                    "visitor_exit_recorded",
+                    visitor_id=visitor_id,
+                    visitor_name=visitor_name,
+                    exit_time=exit_time,
+                    entry_shamsi_date=entry_shamsi_date,
+                    operator=getattr(app, 'current_username', None)
+                )
                 popup.destroy(); fetch_and_display_records(current_filters)
                 messagebox.showinfo("موفق", f"خروج {visitor_name} ثبت شد", parent=search_win)
             except Exception as e: messagebox.showerror("خطا", str(e), parent=popup)
@@ -582,17 +633,310 @@ def open_search_window(app):
     
     search_action()
 
+def export_audit_log_excel(parent):
+    ensure_fonts()
+
+    popup = tb.Toplevel(parent)
+    popup.title("خروجی اکسل لاگ حسابرسی")
+    popup.geometry("480x340")
+    popup.resizable(False, False)
+    try:
+        popup.iconbitmap(utils.resource_path('app_icon.ico'))
+    except Exception:
+        pass
+
+    # ─── عنوان ───────────────────────────────────────────────
+    tb.Label(
+        popup,
+        text="بازه تاریخ را وارد کنید",
+        font=(FONT_MAIN, 13, "bold"),
+        bootstyle=PRIMARY,
+        anchor="center",
+    ).pack(pady=(24, 16))
+
+    # ─── ردیف تاریخ ─────────────────────────────────
+    def _date_row(frm, label_text):
+        row = tb.Frame(frm)
+        row.pack(fill=tk.X, pady=6, padx=30)
+
+        tb.Label(row, text=label_text, font=(FONT_MAIN, 11), width=10,
+                 anchor="e").pack(side=tk.RIGHT)
+
+        years  = [str(y) for y in range(1403, 1420)]
+        months = config.PERSIAN_MONTHS
+        days   = [str(d).zfill(2) for d in range(1, 32)]
+
+        cb_day   = tb.Combobox(row, values=days,   width=4,  state="readonly",
+                               font=(FONT_MAIN, 11))
+        cb_month = tb.Combobox(row, values=months, width=8,  state="readonly",
+                               font=(FONT_MAIN, 11))
+        cb_year  = tb.Combobox(row, values=years,  width=7,  state="readonly",
+                               font=(FONT_MAIN, 11))
+
+        cb_day.pack(side=tk.LEFT, padx=3)
+        cb_month.pack(side=tk.LEFT, padx=3)
+        cb_year.pack(side=tk.LEFT, padx=3)
+
+        import jdatetime
+        today = jdatetime.date.today()
+        cb_year.set(str(today.year))
+        cb_month.set(config.PERSIAN_MONTHS[today.month - 1])
+        cb_day.set(str(today.day).zfill(2))
+
+        return cb_year, cb_month, cb_day
+
+    # ─── فریم‌های تاریخ ─────────────────────────────────────
+    date_frm = tb.Frame(popup)
+    date_frm.pack(fill=tk.X)
+
+    cy_start, cm_start, cd_start = _date_row(date_frm, ": از تاریخ")
+    cy_end,   cm_end,   cd_end   = _date_row(date_frm, ": تا تاریخ")
+
+    # ─── دکمه تولید اکسل ─────────────────────────────────────
+    def _generate():
+        def _month_num(name):
+            if name in config.PERSIAN_MONTHS:
+                return config.PERSIAN_MONTHS.index(name) + 1
+            return 1
+
+        start_str = (
+            f"{cy_start.get()}/"
+            f"{_month_num(cm_start.get()):02d}/"
+            f"{cd_start.get()}"
+        )
+        end_str = (
+            f"{cy_end.get()}/"
+            f"{_month_num(cm_end.get()):02d}/"
+            f"{cd_end.get()}"
+        )
+
+        if start_str > end_str:
+            messagebox.showwarning(
+                "خطای تاریخ",
+                ".تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد",
+                parent=popup,
+            )
+            return
+
+        rows = database.get_audit_logs(start_str, end_str)
+
+        if not rows:
+            messagebox.showwarning(
+                "نتیجه‌ای یافت نشد",
+                f"هیچ لاگی در بازه\n{start_str}  تا  {end_str}\nوجود ندارد.",
+                parent=popup,
+            )
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel Files", "*.xlsx")],
+            title="ذخیره لاگ حسابرسی",
+            initialfile=f"audit_{start_str.replace('/', '-')}_to_{end_str.replace('/', '-')}.xlsx",
+            parent=popup,
+        )
+        if not file_path:
+            return
+
+        col_names = [
+            "شناسه",
+            "تاریخ (شمسی)", 
+            "ساعت",
+            "نوع رویداد",
+            "نام کاربر",
+            "شناسه مهمان",
+            "نام مهمان", 
+            "کد ملی",
+            "ملاقات‌شونده",
+            "واحد",
+            "جزئیات",
+            "تاریخ ایجاد"
+        ]       
+
+        try:
+            df = pd.DataFrame(rows, columns=col_names)
+            df.to_excel(file_path, index=False)
+            messagebox.showinfo(
+                "موفقیت",
+                f"فایل اکسل با {len(rows)} رکورد ذخیره شد.",
+                parent=popup,
+            )
+            popup.destroy()
+        except Exception as e:
+            messagebox.showerror(
+                "خطا",
+                f"خطا در ایجاد فایل اکسل:\n{e}",
+                parent=popup,
+            )
+
+    tb.Button(
+        popup,
+        text="📥  تولید و ذخیره اکسل",
+        command=_generate,
+        bootstyle=SUCCESS,
+    ).pack(pady=20, ipadx=10, ipady=6)
+
+def open_change_password_window(parent, username):
+    ensure_fonts()
+    cp_win = tb.Toplevel(parent)
+    cp_win.title("تغییر رمز عبور")
+    cp_win.geometry("400x700")
+    cp_win.resizable(False, False)
+    try:
+        cp_win.iconbitmap(utils.resource_path('app_icon.ico'))
+    except:
+        pass
+
+    # --- Canvas for background and overlay ---
+    canvas = tk.Canvas(cp_win, highlightthickness=0)
+    canvas.pack(fill=tk.BOTH, expand=True)
+
+    # Load and display background image
+    bg_path = utils.resource_path("change_password_bg.png")
+    bg_image = None
+    if os.path.exists(bg_path):
+        try:
+            pil_img = Image.open(bg_path)
+            # Resize to window size
+            pil_img = pil_img.resize((400, 700), Image.Resampling.LANCZOS)
+            bg_image = ImageTk.PhotoImage(pil_img)
+            canvas.create_image(0, 0, image=bg_image, anchor="nw")
+            # Keep reference
+            canvas.bg_image = bg_image
+        except Exception as e:
+            print(f"Background error: {e}")
+
+    # --- Semi-transparent card background ---
+    # Draw a rounded rectangle with stipple for transparency effect
+    card_x1, card_y1 = 30, 50
+    card_x2, card_y2 = 370, 650
+    radius = 20
+
+    # Create rounded rectangle using a polygon approximation
+    # We'll use a white fill with stipple to make it semi-transparent
+    points = [
+        card_x1 + radius, card_y1,
+        card_x2 - radius, card_y1,
+        card_x2, card_y1,
+        card_x2, card_y1 + radius,
+        card_x2, card_y2 - radius,
+        card_x2, card_y2,
+        card_x2 - radius, card_y2,
+        card_x1 + radius, card_y2,
+        card_x1, card_y2,
+        card_x1, card_y2 - radius,
+        card_x1, card_y1 + radius,
+        card_x1, card_y1,
+    ]
+    # Smooth approximation (simple polygon; you can refine with more points if needed)
+    canvas.create_polygon(points, fill="white", stipple="gray50", outline="#cccccc", width=1, smooth=True)
+
+    # --- Place widgets on canvas ---
+    # We'll create a frame as a window item for easier layout
+    form_frame = tk.Frame(canvas, bg='', highlightthickness=0)  # transparent
+    canvas.create_window(200, 350, window=form_frame, width=320, height=520)
+
+    # Title
+    tb.Label(
+        form_frame,
+        text="🔐 تغییر رمز عبور",
+        font=(FONT_MAIN, 16, "bold"),
+        bootstyle=PRIMARY,
+        anchor="center",
+        background=''  # transparent label background (ttk themes may override, but we try)
+    ).pack(pady=(10, 15))
+
+    tb.Label(
+        form_frame,
+        text=f"{username} : کاربر",
+        font=(FONT_MAIN, 12),
+        bootstyle=SECONDARY,
+        anchor="center",
+        background=''
+    ).pack(pady=(0, 15))
+
+    # Current password
+    tb.Label(form_frame, text=": رمز عبور فعلی", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+    current_pass_entry = tb.Entry(form_frame, show="●", justify="center", font=(FONT_MAIN, 12))
+    current_pass_entry.pack(fill=tk.X, pady=(0, 10))
+    current_pass_entry.focus()
+
+    # New password
+    tb.Label(form_frame, text=": رمز عبور جدید", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+    new_pass_entry = tb.Entry(form_frame, show="●", justify="center", font=(FONT_MAIN, 12))
+    new_pass_entry.pack(fill=tk.X, pady=(0, 10))
+
+    # Confirm password
+    tb.Label(form_frame, text=": تکرار رمز عبور جدید", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+    confirm_pass_entry = tb.Entry(form_frame, show="●", justify="center", font=(FONT_MAIN, 12))
+    confirm_pass_entry.pack(fill=tk.X, pady=(0, 15))
+
+    # Status label
+    status_label = tb.Label(form_frame, text="", font=(FONT_MAIN, 11), bootstyle=INFO, anchor="center", background='')
+    status_label.pack(pady=(0, 10))
+
+    def do_change():
+        current_pw = current_pass_entry.get().strip()
+        new_pw = new_pass_entry.get().strip()
+        confirm_pw = confirm_pass_entry.get().strip()
+
+        if not current_pw:
+            status_label.config(text="❌ لطفاً رمز عبور فعلی را وارد کنید", bootstyle=DANGER)
+            return
+        if len(new_pw) < 3:
+            status_label.config(text="❌ رمز عبور جدید باید حداقل ۳ کاراکتر باشد", bootstyle=DANGER)
+            return
+        if new_pw != confirm_pw:
+            status_label.config(text="❌ تکرار رمز عبور مطابقت ندارد", bootstyle=DANGER)
+            return
+
+        success, _, _ = database.authenticate_user(username, current_pw)
+        if not success:
+            status_label.config(text="❌ رمز عبور فعلی اشتباه است", bootstyle=DANGER)
+            return
+
+        if database.change_user_password(username, new_pw):
+            database.log_audit("user_password_changed", user=username)
+            messagebox.showinfo("موفقیت", "✅ رمز عبور با موفقیت تغییر یافت", parent=cp_win)
+            cp_win.destroy()
+        else:
+            status_label.config(text="❌ خطا در به‌روزرسانی رمز عبور", bootstyle=DANGER)
+
+    # Buttons
+    btn_frame = tb.Frame(form_frame)
+    btn_frame.pack(fill=tk.X, pady=(10, 0))
+
+    tb.Button(
+        btn_frame,
+        text="انصراف",
+        command=cp_win.destroy,
+        bootstyle=(SECONDARY, OUTLINE),
+        width=12
+    ).pack(side=tk.RIGHT, padx=5)
+
+    tb.Button(
+        btn_frame,
+        text="تغییر رمز",
+        command=do_change,
+        bootstyle=SUCCESS,
+        width=12
+    ).pack(side=tk.RIGHT, padx=5)
+
+    cp_win.bind('<Return>', lambda e: do_change())
+
 def open_developer_mode(app):
     ensure_fonts()
     dev_win = tb.Toplevel(app)
     dev_win.title("پنل مدیریت")
     dev_win.geometry("400x700")
-    try: dev_win.iconbitmap('app_icon.ico')
+    dev_win.resizable(False,False)
+    try: dev_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
 
-    if os.path.exists("developer.png"):
+    bg_path = utils.resource_path("developer.png")
+    if os.path.exists(bg_path):
         try:
-            original_img = Image.open("developer.png")
+            original_img = Image.open(bg_path)
             resized_img = original_img.resize((400, 700), Image.Resampling.LANCZOS)
             bg_photo = ImageTk.PhotoImage(resized_img)
             bg_label = tk.Label(dev_win, image=bg_photo)
@@ -601,15 +945,17 @@ def open_developer_mode(app):
             bg_label.lower()
         except Exception: pass
 
-    tb.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 16, "bold"), bootstyle=PRIMARY).pack(pady=(40, 30))
+    tb.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 12, "bold"), bootstyle=PRIMARY).pack(pady=(40, 30))
     
     buttons = [
-        ("مدیریت کاربران", lambda: open_user_manager(dev_win), PRIMARY),
+        ("مدیریت کاربران", lambda: open_user_manager(dev_win, app=app, current_user=app.current_username), PRIMARY),
         ("تعداد ورودی/خروجی های ثبت شده", lambda: show_daily_stats_ui(dev_win), INFO),
         ("نمودار تحلیل ترافیک", lambda: show_heatmap_analytics(app), WARNING),
+        ("لاگ حسابرسی (خروجی اکسل)",lambda: export_audit_log_excel(dev_win),INFO),
         ("تهیه نسخه پشتیبان", utils.create_backup, SECONDARY),
         ("بازیابی اطلاعات", utils.restore_backup, SECONDARY),
         ("افزودن ۱۰۰ رکورد آزمایشی", database.add_dummy_data, (SUCCESS, OUTLINE)),
+        #("حذف رکوردهای آزمایشی", database.delete_dev_records, (DANGER, OUTLINE)), #For deleting test records only.
         ("پاکسازی کامل دیتابیس", database.delete_all_records, DANGER)
     ]
     

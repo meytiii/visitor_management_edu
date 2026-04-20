@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import sqlite3
 import re
@@ -26,7 +27,7 @@ def validate_national_id(nid):
     
     if len(set(nid)) == 1:
         return False, "کد ملی معتبر نیست (همه ارقام یکسان)"
-    
+
     try:
         control_digit = int(nid[9])
         
@@ -68,7 +69,6 @@ def validate_persian_name(name):
     has_letter = any(c.isalpha() for c in name)
     if not has_letter:
         return False, "نام باید شامل حروف باشد"
-    
     if not (persian_pattern.match(name) or english_pattern.match(name)):
         return False, "نام باید فقط شامل حروف فارسی/عربی یا انگلیسی باشد"
     
@@ -170,3 +170,11 @@ def restore_backup():
         messagebox.showinfo("نتیجه بازیابی", msg)
     except Exception:
         messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید")
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)

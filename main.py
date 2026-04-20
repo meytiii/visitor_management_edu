@@ -19,14 +19,15 @@ import windows
 import printer
 
 # --- Main Application Setup ---
-app = tb.Window(themename="lumen") 
+app = tb.Window(themename="lumen")
 app.title(f"سامانه مدیریت ورود و خروج (اداره حراست) - نسخه {config.APP_VERSION}")
 app.geometry("1050x600")
 app.resizable(False, False)
 
-try: 
-    app.iconbitmap('app_icon.ico')
-    app.iconbitmap(default='app_icon.ico')
+try:
+    icon_path = utils.resource_path('app_icon.ico')
+    app.iconbitmap(icon_path)
+    app.iconbitmap(default=icon_path)
 except Exception: 
     pass
 
@@ -37,9 +38,10 @@ FONT_TABLE = "B Nazanin" if "B Nazanin" in available_fonts else "Tahoma"
 
 # --- BACKGROUND FUNCTION ---
 def setup_background(window_root):
-    if not os.path.exists("background.png"): return
+    bg_path = utils.resource_path("background.png")
+    if not os.path.exists(bg_path): return
     try:
-        window_root.original_img = Image.open("background.png")
+        window_root.original_img = Image.open(bg_path)
         bg_label = tk.Label(window_root)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
@@ -175,7 +177,6 @@ def submit_visitor():
     national_id = entry_national_id.get().strip()
     employee_to_meet = entry_employee_to_meet.get().strip()
     department = combo_department.get()
-    
     if not all([visitor_name, national_id, employee_to_meet, department]):
         messagebox.showwarning("خطا", "لطفاً تمام اطلاعات را وارد کنید")
         entry_national_id.focus_set() if not national_id else entry_visitor_name.focus_set()
@@ -192,11 +193,11 @@ def submit_visitor():
     if len(visitor_name) < 3:
         messagebox.showwarning("خطا", "نام باید حداقل ۳ کاراکتر باشد")
         return
-    
+
     if len(employee_to_meet) < 3:
         messagebox.showwarning("خطا", "نام ملاقات شونده باید حداقل ۳ کاراکتر باشد")
         return
-    
+
     current_shamsi_date = jdatetime.date.fromgregorian(date=datetime.now().date()).strftime("%Y/%m/%d")
     try:
         conn = sqlite3.connect(config.DB_PATH)
@@ -207,16 +208,15 @@ def submit_visitor():
         ''', (national_id, employee_to_meet, current_shamsi_date))
         duplicate = cursor.fetchone()
         conn.close()
-        
+
         if duplicate:
             if not messagebox.askyesno("تکرار ورود", "امروز قبلاً ثبت شده است. آیا مطمئن هستید؟"): return
     except: pass
-    
     now = datetime.now()
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
     registrar = getattr(app, 'current_user', 'سیستم') 
-    
+    username = getattr(app, 'current_username', 'سیستم')
     try:
         conn = sqlite3.connect(config.DB_PATH)
         cursor = conn.cursor()
@@ -229,22 +229,38 @@ def submit_visitor():
         conn.commit()
         conn.close()
         
-        threading.Thread(target=printer.print_receipt, args=(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str), daemon=True).start()
+        database.log_audit(
+            "visitor_added",
+            user=username,
+            visitor_id=visitor_id,
+            visitor_name=visitor_name,
+            national_id=national_id,
+            employee_to_meet=employee_to_meet,
+            department=department,
+            entry_time=entry_time_str,
+            shamsi_date=shamsi_date_str
+        )
         
+        threading.Thread(target=printer.print_receipt, args=(visitor_id, visitor_name, national_id, employee_to_meet, department, now, shamsi_date_str), daemon=True).start()
+        show_success_overlay(card_frame)
         clear_fields()
         show_status(f"✓ ورود مهمان با شماره {visitor_id} با موفقیت ثبت شد", "green", duration=10000)
         update_employee_suggestions()
     except sqlite3.Error as e:
+        database.log_audit("visitor_entry_failed",
+            visitor_name=visitor_name, 
+            national_id=national_id, 
+            error=str(e))
         messagebox.showerror("خطای پایگاه داده", f"خطا در ثبت اطلاعات: {e}")
 
 # --- CENTRAL CARD CONTAINER ---
 card_frame = tb.Frame(app, padding=15)
 card_frame.place(relx=0.5, rely=0.46, anchor="center", width=420, height=480)
 
-header_lbl = tb.Label(card_frame, text="(سامانه ثبت ورود و خروج (اداره حراست", font=(FONT_MAIN, 16, "bold"), anchor="center")
+header_lbl = tb.Label(card_frame, text="🛡️(سامانه ثبت ورود و خروج (اداره حراست💻", font=(FONT_MAIN, 16, "bold"), anchor="center")
 header_lbl.grid(row=0, column=0, columnspan=2, pady=(5, 15), sticky="ew")
 
-labels = {": شماره کارت ملی": 1, ": نام ملاقات کننده": 2, ": نام ملاقات شونده": 3, ": امور / واحد مربوطه": 4}
+labels = {": شماره کارت ملی 🆔": 1, ": نام ملاقات کننده 🙋": 2, ": نام ملاقات شونده 👔": 3, ": امور / واحد مربوطه 🏢": 4}
 for text, row in labels.items():
     tb.Label(card_frame, text=text, font=(FONT_MAIN, 12)).grid(row=row, column=1, padx=(10, 20), pady=6, sticky="e")
 
@@ -274,14 +290,15 @@ card_frame.grid_columnconfigure(0, weight=1)
 btn_frame = tb.Frame(card_frame)
 btn_frame.grid(row=5, column=0, columnspan=2, pady=(15, 10), sticky="ew")
 
-tb.Button(btn_frame, text="ثبت و چاپ رسید", command=submit_visitor, bootstyle=SUCCESS).pack(pady=4, fill=tk.X)
-tb.Button(btn_frame, text="مشاهده و جستجوی سوابق", command=lambda: windows.open_search_window(app), bootstyle=PRIMARY).pack(pady=4, fill=tk.X)
-tb.Button(btn_frame, text="راهنما", command=windows.show_help_popup, bootstyle=SECONDARY).pack(pady=4, fill=tk.X)
+tb.Button(btn_frame, text="ثبت و چاپ رسید✅", command=submit_visitor, bootstyle=SUCCESS).pack(pady=4, fill=tk.X)
+tb.Button(btn_frame, text="مشاهده و جستجوی سوابق📚", command=lambda: windows.open_search_window(app), bootstyle=PRIMARY).pack(pady=4, fill=tk.X)
+tb.Button(btn_frame, text="راهنما📑", command=windows.show_help_popup, bootstyle=SECONDARY).pack(pady=4, fill=tk.X)
 
 # --- LOGIN & MENU SETUP ---
 def setup_dashboard(username, role, full_name):
     app.deiconify()
-    app.current_user = full_name 
+    app.current_user = full_name
+    app.current_username = username
     app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {full_name}")
     
     menubar = tk.Menu(app)
@@ -290,13 +307,21 @@ def setup_dashboard(username, role, full_name):
         tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app))
         menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
     
-    user_menu = tk.Menu(menubar, tearoff=0)
+        user_menu = tk.Menu(menubar, tearoff=0)
+
+    def change_password():
+        windows.open_change_password_window(app, app.current_username)
+
     def logout():
-        for widget in app.winfo_children():
-            if isinstance(widget, tk.Toplevel): widget.destroy()
+        database.log_audit("logout", user=getattr(app, "current_username", None))
+        for child in app.winfo_children():
+            if isinstance(child, tk.Toplevel):
+                child.destroy()
         app.withdraw()
         windows.show_login_screen(app, setup_dashboard)
-        
+
+    user_menu.add_command(label="تغییر رمز عبور", command=change_password)
+    user_menu.add_separator()
     user_menu.add_command(label="خروج از حساب", command=logout)
     menubar.add_cascade(label=f"حساب کاربری: {full_name}", menu=user_menu)
     app.config(menu=menubar)
@@ -313,7 +338,7 @@ status_bar = tb.Label(
     anchor=tk.E, 
     font=(FONT_MAIN, 12), 
     padding=2,
-    bootstyle="inverse-light" 
+    bootstyle="inverse-light"
 )
 status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -337,8 +362,50 @@ def show_status(message, color="#555555", duration=10000):
     def return_to_quotes(): cycle_cultural_messages()
     app.after(duration, return_to_quotes)
 
+def show_success_overlay(parent):
+    parent.update_idletasks()
+    x = parent.winfo_rootx()
+    y = parent.winfo_rooty()
+    w = parent.winfo_width()
+    h = parent.winfo_height()
+
+    overlay = tk.Toplevel(parent)
+    overlay.overrideredirect(True)
+    overlay.geometry(f"{w}x{h}+{x}+{y}")
+    overlay.wm_attributes("-alpha", 0.0)
+    overlay.configure(bg="#198754")
+
+    inner = tk.Frame(overlay, bg="#198754")
+    inner.place(relx=0.5, rely=0.5, anchor="center")
+
+    tk.Label(inner, text="✓", font=("Segoe UI", 52, "bold"),
+             bg="#198754", fg="white").pack()
+    tk.Label(inner, text="ثبت شد", font=("Segoe UI", 18, "bold"),
+             bg="#198754", fg="white").pack(pady=(4, 0))
+
+    #SLOWER ANIMATION :
+    def fade(alpha, direction):
+        alpha = round(alpha + direction * 0.04, 2)
+        if direction == 1 and alpha >= 0.88:
+            overlay.wm_attributes("-alpha", 0.88)
+            overlay.after(1000, lambda: fade(0.88, -1))
+        elif direction == -1 and alpha <= 0.0:
+            overlay.destroy()
+        else:
+            overlay.wm_attributes("-alpha", alpha)
+            overlay.after(30, lambda: fade(alpha, direction))
+
+    fade(0.0, 1)
+
+def on_app_close():
+    database.log_audit("logout", user=getattr(app, "current_username", None))
+    database.log_audit("app_closed", user=getattr(app, "current_username", None))
+    app.destroy()
+app.protocol("WM_DELETE_WINDOW", on_app_close)
+
 if __name__ == "__main__":
     database.setup_database()
+    database.setup_audit_table()
     update_employee_suggestions()
     start_quote_cycle()
     app.withdraw()

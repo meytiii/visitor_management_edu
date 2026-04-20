@@ -201,16 +201,16 @@ def change_user_password(username, new_password):
 
 # --- DATA GENERATION ---
 def delete_all_records():
-    if not messagebox.askyesno("Danger Zone", "Are you sure you want to DELETE ALL records?\n\nThis cannot be undone!"):
+    if not messagebox.askyesno("Danger Zone", "آیا از حذف تمامی اطلاعات پایگاه داده اطمینان دارید؟\n\n!این غیرقابل بازگشت می‌باشد"):
         return
     try:
         with DBConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM visitors")
             cursor.execute("DELETE FROM sqlite_sequence WHERE name='visitors'")
-        messagebox.showinfo("Developer Mode", "Database has been completely cleared.")
+        messagebox.showinfo("Developer Mode", ".تمامی اطلاعات پایگاه داده حذف شدند")
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to delete data: {e}")
+        messagebox.showerror("Error", f"حذف اطلاعات با شکست مواجه شد {e}")
 
 def add_dummy_data():
     try:
@@ -245,8 +245,96 @@ def add_dummy_data():
         with DBConnection() as conn:
             cursor = conn.cursor()
             for r in dummy_records:
-                cursor.execute('''INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date) VALUES (?, ?, ?, ?, ?, ?)''', (r['visitor_name'], r['national_id'], r['employee_to_meet'], r['department'], r['entry_time'], r['shamsi_date']))
-        
+                cursor.execute(
+                '''INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                (r['visitor_name'], r['national_id'], r['employee_to_meet'], r['department'], r['entry_time'], r['shamsi_date'], 'dev_debug')
+                )
+
         messagebox.showinfo("Developer Mode", "100 Random Records (Full Data) Added Successfully!")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to generate data: {e}")
+
+def delete_dev_records():
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM visitors WHERE created_by = 'dev_debug'")
+            deleted_count = cursor.rowcount
+        messagebox.showinfo("Developer Mode", f"{deleted_count} : تعداد رکورد های آزمایشی حذف شده ")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to delete dev records: {e}")
+
+# ─── Audit Log ────────────────────────────────────────────────
+def setup_audit_table():
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                shamsi_date  TEXT    NOT NULL,
+                shamsi_time  TEXT    NOT NULL,
+                event_type   TEXT    NOT NULL,
+                user_name    TEXT,
+                visitor_id   INTEGER,
+                visitor_name TEXT,
+                national_id  TEXT,
+                employee_to_meet TEXT,
+                department   TEXT,
+                details      TEXT,
+                created_at   TEXT    NOT NULL
+            )
+        ''')
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log (shamsi_date);"
+        )
+
+def log_audit(event_type: str, user=None, **kwargs):
+    if event_type not in config.AUDIT_EVENT_TYPES:
+        print(f"[Audit Log Error] Invalid event type: {event_type}")
+        return
+    
+    try:
+        import jdatetime
+        now_j = jdatetime.datetime.now()
+        sh_date = now_j.strftime("%Y/%m/%d")
+        sh_time = now_j.strftime("%H:%M:%S")
+        created_at = datetime.now().isoformat(timespec="seconds")
+        
+        if user is None:
+            user = "System"
+        
+        visitor_id = kwargs.get("visitor_id")
+        visitor_name = kwargs.get("visitor_name")
+        national_id = kwargs.get("national_id")
+        employee_to_meet = kwargs.get("employee_to_meet")
+        department = kwargs.get("department")
+        details = kwargs.get("details") or kwargs.get("error") or "No details provided"
+        
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO audit_log
+                    (shamsi_date, shamsi_time, event_type, user_name,
+                     visitor_id, visitor_name, national_id,
+                     employee_to_meet, department, details, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                sh_date, sh_time, event_type, user,
+                visitor_id, visitor_name, national_id,
+                employee_to_meet, department, details, created_at,
+            ))
+    except Exception as e:
+        print(f"[Audit Log Error] {e}")
+
+def get_audit_logs(start_date: str, end_date: str) -> list:
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, shamsi_date, shamsi_time, event_type,
+                   user_name, visitor_id, visitor_name,
+                   national_id, employee_to_meet, department, details, created_at
+            FROM   audit_log
+            WHERE  shamsi_date BETWEEN ? AND ?
+            ORDER  BY shamsi_date, shamsi_time
+        ''', (start_date, end_date))
+        return cursor.fetchall()
