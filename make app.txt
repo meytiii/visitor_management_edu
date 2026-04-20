@@ -20,4 +20,11 @@ if you cant find your python in interpreter list run this instead (replace ASUS 
 for 32 bit windows : 
 & "C:\Users\mehdi_kh278\AppData\Local\Programs\Python\Python37-32\python.exe" -m pip install jdatetime pyinstaller pywin32 Pillow openpyxl pandas matplotlib arabic-reshaper python-bidi
 
-& "C:\Users\Novin\AppData\Local\Programs\Python\Python37-32\python.exe" -m PyInstaller --noconsole --onefile --icon=app_icon.ico --add-data "background.png;." --add-data "login.png;." --add-data "user_management.png;." --add-data "developer.png;." --add-data "app_icon.ico;." main.py
+& "C:\Users\Novin\AppData\Local\Programs\Python\Python37-32\python.exe" -m PyInstaller --noconsole --onefile --icon=app_icon.ico `
+--add-data "background.png;." `
+--add-data "login.png;." `
+--add-data "user_management.png;." `
+--add-data "developer.png;." `
+--add-data "change_password_bg.png;." `
+--add-data "app_icon.ico;." `
+main.py

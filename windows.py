@@ -791,29 +791,23 @@ def open_change_password_window(parent, username):
     canvas = tk.Canvas(cp_win, highlightthickness=0)
     canvas.pack(fill=tk.BOTH, expand=True)
 
-    # Load and display background image
     bg_path = utils.resource_path("change_password_bg.png")
     bg_image = None
     if os.path.exists(bg_path):
         try:
             pil_img = Image.open(bg_path)
-            # Resize to window size
             pil_img = pil_img.resize((400, 700), Image.Resampling.LANCZOS)
             bg_image = ImageTk.PhotoImage(pil_img)
             canvas.create_image(0, 0, image=bg_image, anchor="nw")
-            # Keep reference
             canvas.bg_image = bg_image
         except Exception as e:
             print(f"Background error: {e}")
 
     # --- Semi-transparent card background ---
-    # Draw a rounded rectangle with stipple for transparency effect
     card_x1, card_y1 = 30, 50
     card_x2, card_y2 = 370, 650
     radius = 20
 
-    # Create rounded rectangle using a polygon approximation
-    # We'll use a white fill with stipple to make it semi-transparent
     points = [
         card_x1 + radius, card_y1,
         card_x2 - radius, card_y1,
@@ -828,12 +822,10 @@ def open_change_password_window(parent, username):
         card_x1, card_y1 + radius,
         card_x1, card_y1,
     ]
-    # Smooth approximation (simple polygon; you can refine with more points if needed)
     canvas.create_polygon(points, fill="white", stipple="gray50", outline="#cccccc", width=1, smooth=True)
 
     # --- Place widgets on canvas ---
-    # We'll create a frame as a window item for easier layout
-    form_frame = tk.Frame(canvas, bg='', highlightthickness=0)  # transparent
+    form_frame = tk.Frame(canvas, bg='', highlightthickness=0)
     canvas.create_window(200, 350, window=form_frame, width=320, height=520)
 
     # Title
@@ -843,7 +835,7 @@ def open_change_password_window(parent, username):
         font=(FONT_MAIN, 16, "bold"),
         bootstyle=PRIMARY,
         anchor="center",
-        background=''  # transparent label background (ttk themes may override, but we try)
+        background=''
     ).pack(pady=(10, 15))
 
     tb.Label(
@@ -855,7 +847,6 @@ def open_change_password_window(parent, username):
         background=''
     ).pack(pady=(0, 15))
 
-    # Current password
     tb.Label(form_frame, text=": رمز عبور فعلی", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
     current_pass_entry = tb.Entry(form_frame, show="●", justify="center", font=(FONT_MAIN, 12))
     current_pass_entry.pack(fill=tk.X, pady=(0, 10))

@@ -8,7 +8,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('background.png', '.'), ('login.png', '.'), ('user_management.png', '.'), ('developer.png', '.'), ('app_icon.ico', '.')],
+    datas=[('background.png', '.'), ('login.png', '.'), ('user_management.png', '.'), ('developer.png', '.'), ('change_password_bg.png', '.'), ('app_icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
