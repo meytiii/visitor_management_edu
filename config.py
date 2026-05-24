@@ -1,7 +1,7 @@
 import os
 from tkinter import messagebox
 
-APP_VERSION = "3.0.2"
+APP_VERSION = "3.2.4"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -86,3 +86,21 @@ RED_COLOR = "#f44336"
 RED_ACTIVE_COLOR = "#d32f2f"
 DEFAULT_BG_COLOR = "#F0F0F0"
 CARD_BG_COLOR = "#B1E666"
+
+AUDIT_EVENT_TYPES = [
+    "login_success",
+    "login_failed",
+    "logout",
+    "app_closed",
+    "visitor_added",
+    "visitor_exit_recorded",
+    "user_created",
+    "user_deleted",
+    "user_password_changed",
+    "user_updated",
+    "backup_created",
+    "backup_restored",
+    "data_exported",
+    "developer_mode_enabled",
+    "error"
+]

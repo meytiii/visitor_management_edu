@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import sqlite3
 import re
@@ -26,7 +27,7 @@ def validate_national_id(nid):
     
     if len(set(nid)) == 1:
         return False, "کد ملی معتبر نیست (همه ارقام یکسان)"
-    
+
     try:
         control_digit = int(nid[9])
         
@@ -68,7 +69,6 @@ def validate_persian_name(name):
     has_letter = any(c.isalpha() for c in name)
     if not has_letter:
         return False, "نام باید شامل حروف باشد"
-    
     if not (persian_pattern.match(name) or english_pattern.match(name)):
         return False, "نام باید فقط شامل حروف فارسی/عربی یا انگلیسی باشد"
     
@@ -117,7 +117,6 @@ def create_backup():
         messagebox.showerror("خطا در پشتیبان‌گیری", f":خطایی در حین عملیات رخ داد\n{e}")
 
 def restore_backup():
-    """Imports records from a backup, skipping exact duplicates (Same ID + Same Time)."""
     backup_path = filedialog.askopenfilename(
         title="انتخاب فایل پشتیبان",
         filetypes=[("Database Files", "*.db"), ("All Files", "*.*")]
@@ -129,16 +128,31 @@ def restore_backup():
         bk_conn = sqlite3.connect(backup_path)
         bk_cursor = bk_conn.cursor()
         
+        bk_cursor.execute("PRAGMA table_info(visitors)")
+        columns = [col[1] for col in bk_cursor.fetchall()]
+        has_created_by = 'created_by' in columns
+        
+        if has_created_by:
+            select_query = """SELECT visitor_name, national_id, employee_to_meet, 
+                              department, entry_time, shamsi_date, exit_time, created_by 
+                              FROM visitors"""
+        else:
+            select_query = """SELECT visitor_name, national_id, employee_to_meet, 
+                              department, entry_time, shamsi_date, exit_time 
+                              FROM visitors"""
+        
         try:
-            bk_cursor.execute("SELECT visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time FROM visitors")
+            bk_cursor.execute(select_query)
             records_to_import = bk_cursor.fetchall()
         except sqlite3.DatabaseError:
             bk_conn.close()
             raise Exception("Invalid Schema")
         bk_conn.close()
+        
         if not records_to_import:
             messagebox.showinfo("اطلاعات", "فایل انتخاب شده خالی است")
             return
+            
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
@@ -154,19 +168,37 @@ def restore_backup():
             if cursor.fetchone():
                 duplicate_count += 1
             else:
-                cursor.execute('''
-                    INSERT INTO visitors (visitor_name, national_id, employee_to_meet, department, entry_time, shamsi_date, exit_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', row)
+                if has_created_by and len(row) == 8:
+                    cursor.execute('''
+                        INSERT INTO visitors 
+                        (visitor_name, national_id, employee_to_meet, department, 
+                         entry_time, shamsi_date, exit_time, created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', row)
+                else:
+                    cursor.execute('''
+                        INSERT INTO visitors 
+                        (visitor_name, national_id, employee_to_meet, department, 
+                         entry_time, shamsi_date, exit_time, created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], 'بازیابی شده'))
                 imported_count += 1
             
         conn.commit()
         conn.close()
-        # --- Message Formatting ---
-        msg = f"{imported_count} : تعداد رکورد های جدید  "
         
+        msg = f"{imported_count} : تعداد رکورد های جدید  "
         if duplicate_count > 0:
             msg += f"\n\n(همچنین {duplicate_count} رکورد تکراری نادیده گرفته شد)"
         messagebox.showinfo("نتیجه بازیابی", msg)
+        
+    except Exception as e:
+        messagebox.showerror("خطا", f"فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید\n\n{e}")
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
     except Exception:
-        messagebox.showerror("خطا", "فایل انتخاب شده معتبر نیست\nلطفاً از صحیح بودن فایل پشتیبان اطمینان حاصل کنید")
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
