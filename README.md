@@ -58,9 +58,9 @@
 ## 📥 Installation & Setup
 
 ### For End‑Users (no coding required)
-1. Download the latest `VisitorSystem_Setup.exe` from the [Releases](https://github.com/meytiii/visitor_management_edu/releases) page.
+1. Download the latest `VisitorSystem.exe` from the [Releases](https://github.com/meytiii/visitor_management_edu/releases) page.
 2. Run the installer and follow the instructions.
-3. Launch **Visitor Management System** from the desktop shortcut.
+3. Launch **Visitor Management System**.
 4. Default admin credentials:
    - **Username:** `admin`
    - **Password:** `admin` *(change after first login)*
