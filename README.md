@@ -11,6 +11,9 @@
 
 ---
 
+> ⚠️ **Notice:** This version of the application is no longer supported. Development has moved to the new [SQL Server version](https://github.com/meytiii/visitor_management_edu_sqlserver). Please use the new repository for future updates and support.
+
+
 ## ✨ Key Features
 
 - **🔐 Secure Authentication** – Role‑based access (Admin / Guard) with hashed passwords (PBKDF2-SHA512).
@@ -66,9 +69,9 @@ venv\Scripts\activate      # On Windows
 pip install -r requirements.txt
 
 # Run the application
-python main.py```
+python main.py
 
 
 ### Build a Standalone EXE (optional)
 ```bash
-PyInstaller --noconsole --onefile --icon=assets/app_icon.ico --add-data "assets;assets" main.py```
+pyinstaller --noconsole --onefile --icon=assets/app_icon.ico --add-data "assets;assets" main.py
