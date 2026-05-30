@@ -11,7 +11,15 @@
 
 ---
 
-> ⚠️ **Notice:** This version of the application is no longer supported. Development has moved to the new [SQL Server version](https://github.com/meytiii/visitor_management_edu_sqlserver). Please use the new repository for future updates and support.
+> # 🚨 **IMPORTANT NOTICE** 🚨
+>
+> ## ⚠️ THIS VERSION IS NO LONGER SUPPORTED ⚠️
+>
+> **Development has moved to the new [SQL Server Version](https://github.com/meytiii/visitor_management_edu_sqlserver).**
+>
+> ### Please use the new repository for all future updates, features, and support.
+>
+> *This repository is archived and will not receive any further updates.*
 
 
 ## ✨ Key Features
