@@ -47,10 +47,49 @@ def ensure_fonts():
         _fonts_checked = True
     except: pass
 
+def show_help_popup(role='guard'):
+    import tempfile
+    import webbrowser
+    import base64
 
-def show_help_popup():
-    help_text = f"در صورت بروز هرگونه مشکل یا سوال با شماره زیر تماس بگیرید\n\nخرّم آبادی - 09222550573\n\nنسخه برنامه {config.APP_VERSION}"
-    messagebox.showinfo("راهنما", help_text)
+    if role == 'admin':
+        html_file = "help_guide_admins.html"
+    else:
+        html_file = "help_guide.html"
+
+    template_path = utils.resource_path(os.path.join("assets", html_file))
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            html_template = f.read()
+    except Exception as e:
+        messagebox.showerror("خطا", f"فایل راهنما یافت نشد:\n{e}")
+        return
+
+    bg_path = utils.resource_path(os.path.join('assets', 'background.png'))
+    bg_base64 = ""
+    if os.path.exists(bg_path):
+        try:
+            with open(bg_path, "rb") as img_file:
+                bg_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+        except:
+            pass
+
+    html_content = html_template.replace("{{BG_BASE64}}", bg_base64)
+    html_content = html_content.replace("{{APP_VERSION}}", config.APP_VERSION)
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+        f.write(html_content)
+        temp_path = f.name
+
+    webbrowser.open('file://' + temp_path)
+
+    def cleanup():
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+    import threading
+    threading.Timer(10.0, cleanup).start()
 
 def show_login_screen(app, on_success_callback):
     ensure_fonts()
@@ -69,7 +108,7 @@ def show_login_screen(app, on_success_callback):
     canvas.pack(fill="both", expand=True)
     canvas.configure(bg="#2E3B4E")
     
-    bg_path = utils.resource_path("login.png")
+    bg_path = utils.resource_path(os.path.join('assets', 'login.png'))
     if os.path.exists(bg_path):
         try:
             pil_image = Image.open(bg_path)
@@ -79,7 +118,7 @@ def show_login_screen(app, on_success_callback):
             login_win.bg_image_obj = bg_image_obj 
         except Exception as e: pass
 
-    try: login_win.iconbitmap(utils.resource_path('app_icon.ico'))
+    try: login_win.iconbitmap(utils.resource_path(os.path.join('assets', 'app_icon.ico')))
     except: pass
 
     canvas.create_text(200, 40, text="سامانه مدیریت مراجعین💻", fill="#d6f7fd", font=(FONT_MAIN, 16, "bold"))
@@ -118,16 +157,19 @@ def show_login_screen(app, on_success_callback):
     login_win.bind('<Return>', lambda e: do_login())
     ent_user.focus()
 
-def open_user_manager(parent, app=None, current_user=None):
+def open_user_manager(parent, app=None, current_user=None, on_self_role_change=None):
     ensure_fonts()
+    self_role_callback = on_self_role_change
     um_win = tb.Toplevel(parent)
     um_win.title("مدیریت کاربران")
     um_win.geometry("750x550")
-    um_win.resizable(False,False)
-    try: um_win.iconbitmap(utils.resource_path('app_icon.ico'))
-    except: pass
+    um_win.resizable(False, False)
+    try:
+        um_win.iconbitmap(utils.resource_path('app_icon.ico'))
+    except:
+        pass
 
-    bg_path = utils.resource_path("user_management.png")
+    bg_path = utils.resource_path(os.path.join('assets', 'user_management.png'))
     if os.path.exists(bg_path):
         try:
             original_img = Image.open(bg_path)
@@ -137,76 +179,146 @@ def open_user_manager(parent, app=None, current_user=None):
             bg_label.image = bg_photo
             bg_label.place(x=0, y=0, relwidth=1, relheight=1)
             bg_label.lower()
-        except Exception: pass
+        except Exception:
+            pass
 
-    list_frame = tk.Frame(um_win, width=300, bg="white", bd=1, relief="solid") 
+    # --- Left side: user list ---
+    list_frame = tk.Frame(um_win, width=300, bg="white", bd=1, relief="solid")
     list_frame.pack(side=tk.LEFT, fill=tk.Y, padx=15, pady=15)
     list_frame.pack_propagate(False)
 
-    tb.Label(list_frame, text="لیست کاربران", font=(FONT_MAIN, 14, "bold"), bootstyle=PRIMARY, background="white").pack(anchor="e", pady=(10, 5), padx=10)
-    
+    tb.Label(
+        list_frame, text="لیست کاربران", font=(FONT_MAIN, 14, "bold"),
+        bootstyle=PRIMARY, background="white"
+    ).pack(anchor="e", pady=(10, 5), padx=10)
+
     user_list = tk.Listbox(list_frame, font=(FONT_TABLE, 12), bd=0, justify='right')
     user_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-    
-    def refresh_list():
-        user_list.delete(0, tk.END)
-        for u, r, fname in database.get_all_users():
-            role_fa = "مدیر" if r == 'admin' else "نگهبان"
-            display_name = fname if fname else "---"
-            user_list.insert(tk.END, f"[{role_fa}]  {display_name}  ({u})")
-    refresh_list()
-    
+
+    # --- Right side: actions ---
     action_frame = tk.Frame(um_win, width=350, bg="white", bd=1, relief="solid")
     action_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=15, pady=15)
     action_frame.pack_propagate(False)
-    
-    tb.Label(action_frame, text="افزودن کاربر جدید", font=(FONT_MAIN, 14, "bold"), background="white").pack(pady=(15, 10))
-    
+
+    tb.Label(
+        action_frame, text="افزودن کاربر جدید", font=(FONT_MAIN, 14, "bold"),
+        background="white"
+    ).pack(pady=(15, 10))
+
     def create_input(label_text, show=None):
-        tb.Label(action_frame, text=label_text, font=(FONT_MAIN, 11), background="white").pack(anchor="e", pady=(5, 2), padx=20)
-        entry = tb.Entry(action_frame, justify='center', font=(FONT_MAIN, 11), show=show)
+        tb.Label(
+            action_frame, text=label_text, font=(FONT_MAIN, 11),
+            background="white"
+        ).pack(anchor="e", pady=(5, 2), padx=20)
+        entry = tb.Entry(
+            action_frame, justify='center', font=(FONT_MAIN, 11), show=show
+        )
         entry.pack(fill=tk.X, padx=20)
         return entry
 
     new_fullname_ent = create_input(":نام و نام خانوادگی")
     new_user_ent = create_input(":نام کاربری")
     new_pass_ent = create_input(":رمز عبور", show="●")
-    
-    tb.Label(action_frame, text=":نقش کاربری", font=(FONT_MAIN, 11), background="white").pack(anchor="e", pady=(10, 5), padx=20)
+
+    tb.Label(
+        action_frame, text=":نقش کاربری", font=(FONT_MAIN, 11),
+        background="white"
+    ).pack(anchor="e", pady=(10, 5), padx=20)
     role_var = tk.StringVar(value="guard")
     radio_frame = tk.Frame(action_frame, bg="white")
     radio_frame.pack(anchor="e", padx=20)
-    tb.Radiobutton(radio_frame, text="نگهبان", variable=role_var, value="guard", bootstyle=PRIMARY).pack(side=tk.RIGHT, padx=10)
-    tb.Radiobutton(radio_frame, text="مدیر", variable=role_var, value="admin", bootstyle=PRIMARY).pack(side=tk.RIGHT, padx=10)
-    
+    tb.Radiobutton(
+        radio_frame, text="نگهبان", variable=role_var, value="guard",
+        bootstyle=PRIMARY
+    ).pack(side=tk.RIGHT, padx=10)
+    tb.Radiobutton(
+        radio_frame, text="مدیر", variable=role_var, value="admin",
+        bootstyle=PRIMARY
+    ).pack(side=tk.RIGHT, padx=10)
+
+    # --- Edit and Delete buttons frame (side by side) ---
+    edit_delete_frame = tk.Frame(action_frame, bg="white")
+    edit_delete_frame.pack(fill=tk.X, pady=(10, 5), padx=20)
+
+    edit_btn = tb.Button(
+        edit_delete_frame, text="ویرایش کاربر", bootstyle=(INFO, OUTLINE),
+        state=tk.DISABLED
+    )
+    edit_btn.pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=(0, 5))
+
+    delete_btn = tb.Button(
+        edit_delete_frame, text="حذف کاربر", bootstyle=(DANGER, OUTLINE),
+        state=tk.DISABLED
+    )
+    delete_btn.pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=(5, 0))
+
+    # --- Functions ---
+    def refresh_list():
+        user_list.delete(0, tk.END)
+        for u, r, fname in database.get_all_users():
+            role_fa = "مدیر" if r == 'admin' else "نگهبان"
+            display_name = fname if fname else "---"
+            user_list.insert(tk.END, f"[{role_fa}]  {display_name}  ({u})")
+
+    def on_user_select(event=None):
+        """Enable edit/delete buttons when a user is selected."""
+        if user_list.curselection():
+            edit_btn.config(state=tk.NORMAL)
+            delete_btn.config(state=tk.NORMAL)
+        else:
+            edit_btn.config(state=tk.DISABLED)
+            delete_btn.config(state=tk.DISABLED)
+
+    user_list.bind('<<ListboxSelect>>', on_user_select)
+
     def add_user():
-        fname, u, p, r = new_fullname_ent.get().strip(), new_user_ent.get().strip(), new_pass_ent.get().strip(), role_var.get()
-        if len(u) < 3 or len(p) < 3: return messagebox.showwarning("خطا", "نام کاربری و رمز عبور باید حداقل ۳ حرف باشند", parent=um_win)
-        if len(fname) < 2: return messagebox.showwarning("خطا", "لطفاً نام و نام خانوادگی را وارد کنید", parent=um_win)
-        
+        fname = new_fullname_ent.get().strip()
+        u = new_user_ent.get().strip()
+        p = new_pass_ent.get().strip()
+        r = role_var.get()
+
+        if len(u) < 3 or len(p) < 3:
+            messagebox.showwarning(
+                "خطا", "نام کاربری و رمز عبور باید حداقل ۳ حرف باشند", parent=um_win
+            )
+            return
+        if len(fname) < 2:
+            messagebox.showwarning(
+                "خطا", "لطفاً نام و نام خانوادگی را وارد کنید", parent=um_win
+            )
+            return
+
         ok, msg = database.create_user(u, p, fname, r)
         if ok:
             messagebox.showinfo("موفق", f"کاربر {fname} با موفقیت ایجاد شد", parent=um_win)
-            for ent in [new_fullname_ent, new_user_ent, new_pass_ent]: ent.delete(0, tk.END)
+            for ent in [new_fullname_ent, new_user_ent, new_pass_ent]:
+                ent.delete(0, tk.END)
             refresh_list()
-        else: messagebox.showerror("خطا", msg, parent=um_win)
+            on_user_select()  # disable buttons again
+        else:
+            messagebox.showerror("خطا", msg, parent=um_win)
 
-    tb.Button(action_frame, text="ثبت کاربر", command=add_user, bootstyle=SUCCESS).pack(fill=tk.X, pady=15, padx=20)
-    tb.Separator(action_frame).pack(fill=tk.X, pady=10, padx=20)
-    
     def delete_selected():
         sel = user_list.curselection()
-        if not sel: return
-        username = user_list.get(sel[0]).split("  (")[-1].replace(")", "").strip()
+        if not sel:
+            return
+        item_text = user_list.get(sel[0])
+        username = item_text.split("  (")[-1].replace(")", "").strip()
 
         if current_user and username == current_user:
-            messagebox.showwarning("خطا", ".نمی‌توانید حساب کاربری خود را حذف کنید", parent=um_win)
+            messagebox.showwarning(
+                "خطا", ".نمی‌توانید حساب کاربری خود را حذف کنید", parent=um_win
+            )
             return
 
-        if messagebox.askyesno("حذف", f"{username} آیا از حذف کاربر مطمئن هستید؟", parent=um_win):
+        if messagebox.askyesno(
+            "حذف", f"{username} آیا از حذف کاربر مطمئن هستید؟", parent=um_win
+        ):
             ok, msg = database.delete_user(username)
             if ok:
                 refresh_list()
+                on_user_select()
+                # If deleted self, close everything and logout
                 if app and current_user and username == current_user:
                     um_win.destroy()
                     parent.destroy()
@@ -217,9 +329,232 @@ def open_user_manager(parent, app=None, current_user=None):
             else:
                 messagebox.showerror("خطا", msg, parent=um_win)
 
+    def edit_selected():
+        sel = user_list.curselection()
+        if not sel:
+            return
+        item_text = user_list.get(sel[0])
+        username = item_text.split("  (")[-1].replace(")", "").strip()
 
+        # Fetch current user data
+        users = database.get_all_users()
+        user_data = None
+        for u, r, fname in users:
+            if u == username:
+                user_data = (u, r, fname)
+                break
+        if not user_data:
+            messagebox.showerror("خطا", "کاربر یافت نشد", parent=um_win)
+            return
 
-    tb.Button(action_frame, text="حذف کاربر انتخاب شده", command=delete_selected, bootstyle=(DANGER, OUTLINE)).pack(fill=tk.X, padx=20)
+        # Open edit window
+        edit_win = tb.Toplevel(um_win)
+        edit_win.title(f"{username} : ویرایش کاربر")
+        edit_win.geometry("400x800")
+        edit_win.resizable(False, False)
+        try:
+            edit_win.iconbitmap(utils.resource_path('app_icon.ico'))
+        except:
+            pass
+
+        # Background image
+        canvas = tk.Canvas(edit_win, highlightthickness=0)
+        canvas.pack(fill=tk.BOTH, expand=True)
+
+        bg_path_edit = utils.resource_path(os.path.join('assets', 'change_password_bg.png'))
+        if os.path.exists(bg_path_edit):
+            try:
+                pil_img = Image.open(bg_path_edit)
+                pil_img = pil_img.resize((400, 800), Image.Resampling.LANCZOS)
+                bg_image = ImageTk.PhotoImage(pil_img)
+                canvas.create_image(0, 0, image=bg_image, anchor="nw")
+                canvas.bg_image = bg_image
+            except Exception:
+                pass
+
+        # Semi-transparent card
+        card_x1, card_y1 = 30, 50
+        card_x2, card_y2 = 370, 750
+        points = [
+            card_x1 + 20, card_y1,
+            card_x2 - 20, card_y1,
+            card_x2, card_y1,
+            card_x2, card_y1 + 20,
+            card_x2, card_y2 - 20,
+            card_x2, card_y2,
+            card_x2 - 20, card_y2,
+            card_x1 + 20, card_y2,
+            card_x1, card_y2,
+            card_x1, card_y2 - 20,
+            card_x1, card_y1 + 20,
+            card_x1, card_y1,
+        ]
+        canvas.create_polygon(points, fill="white", stipple="gray50", outline="#cccccc", width=1, smooth=True)
+
+        form_frame = tk.Frame(canvas, bg='', highlightthickness=0)
+        canvas.create_window(200, 400, window=form_frame, width=320, height=620)
+
+        tb.Label(
+            form_frame, text=f"✏️ ویرایش کاربر", font=(FONT_MAIN, 16, "bold"),
+            bootstyle=PRIMARY, anchor="center", background=''
+        ).pack(pady=(10, 15))
+
+        # Full name field
+        tb.Label(form_frame, text=": نام و نام خانوادگی", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+        fullname_entry = tb.Entry(form_frame, justify='center', font=(FONT_MAIN, 12))
+        fullname_entry.insert(0, user_data[2] if user_data[2] else "")
+        fullname_entry.pack(fill=tk.X, pady=(0, 10))
+
+        # Username field
+        tb.Label(form_frame, text=": نام کاربری", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+        username_entry = tb.Entry(form_frame, justify='center', font=(FONT_MAIN, 12))
+        username_entry.insert(0, username)
+        username_entry.pack(fill=tk.X, pady=(0, 10))
+
+        # Role selection
+        tb.Label(form_frame, text=": نقش کاربری", font=(FONT_MAIN, 12), background='').pack(anchor="e", pady=(5, 2))
+        role_var_edit = tk.StringVar(value=user_data[1])
+        role_frame = tk.Frame(form_frame, bg='')
+        role_frame.pack(fill=tk.X, pady=(0, 10))
+        tb.Radiobutton(
+            role_frame, text="نگهبان", variable=role_var_edit, value="guard",
+            bootstyle=PRIMARY
+        ).pack(side=tk.RIGHT, padx=10)
+        tb.Radiobutton(
+            role_frame, text="مدیر", variable=role_var_edit, value="admin",
+            bootstyle=PRIMARY
+        ).pack(side=tk.RIGHT, padx=10)
+
+        # Password fields (optional)
+        tb.Label(
+            form_frame, text=": رمز عبور جدید (اختیاری)", font=(FONT_MAIN, 12),
+            background=''
+        ).pack(anchor="e", pady=(5, 2))
+        new_pass_edit = tb.Entry(form_frame, show="●", justify='center', font=(FONT_MAIN, 12))
+        new_pass_edit.pack(fill=tk.X, pady=(0, 5))
+
+        tb.Label(
+            form_frame, text=": تکرار رمز عبور جدید", font=(FONT_MAIN, 12),
+            background=''
+        ).pack(anchor="e", pady=(5, 2))
+        confirm_pass_edit = tb.Entry(form_frame, show="●", justify='center', font=(FONT_MAIN, 12))
+        confirm_pass_edit.pack(fill=tk.X, pady=(0, 10))
+
+        status_label = tb.Label(
+            form_frame, text="", font=(FONT_MAIN, 11), bootstyle=INFO,
+            anchor="center", background=''
+        )
+        status_label.pack(pady=(0, 10))
+
+        def save_changes():
+            new_fullname = fullname_entry.get().strip()
+            new_username = username_entry.get().strip()
+            new_role = role_var_edit.get()
+            new_pass = new_pass_edit.get().strip()
+            confirm_pass = confirm_pass_edit.get().strip()
+
+            if not new_fullname or len(new_fullname) < 2:
+                status_label.config(text="❌ نام و نام خانوادگی الزامی است", bootstyle=DANGER)
+                return
+            if not new_username or len(new_username) < 3:
+                status_label.config(text="❌ نام کاربری باید حداقل ۳ کاراکتر باشد", bootstyle=DANGER)
+                return
+
+            if new_pass or confirm_pass:
+                if len(new_pass) < 3:
+                    status_label.config(text="❌ رمز عبور باید حداقل ۳ کاراکتر باشد", bootstyle=DANGER)
+                    return
+                if new_pass != confirm_pass:
+                    status_label.config(text="❌ تکرار رمز عبور مطابقت ندارد", bootstyle=DANGER)
+                    return
+
+            if new_username != username:
+                existing_users = [u for u, _, _ in database.get_all_users()]
+                if new_username in existing_users:
+                    status_label.config(text="❌ نام کاربری تکراری است", bootstyle=DANGER)
+                    return
+
+            if (current_user and username == current_user and
+                user_data[1] == 'admin' and new_role != 'admin'):
+                users = database.get_all_users()
+                admin_count = sum(1 for _, r, _ in users if r == 'admin')
+                if admin_count <= 1:
+                    status_label.config(
+                        text="❌ نمی‌توانید نقش خود را تغییر دهید (آخرین مدیر سیستم)",
+                        bootstyle=DANGER
+                    )
+                    return
+
+            try:
+                with database.DBConnection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "UPDATE users SET full_name = ?, role = ? WHERE username = ?",
+                        (new_fullname, new_role, username)
+                    )
+                    if new_username != username:
+                        cursor.execute(
+                            "UPDATE users SET username = ? WHERE username = ?",
+                            (new_username, username)
+                        )
+                    if new_pass:
+                        hashed = database.hash_password(new_pass)
+                        cursor.execute(
+                            "UPDATE users SET password = ? WHERE username = ?",
+                            (hashed, new_username if new_username != username else username)
+                        )
+                database.log_audit(
+                    "user_updated",
+                    user=current_user,
+                    details=f"Updated user {username} -> {new_username}"
+                )
+                messagebox.showinfo("موفقیت", "✅ اطلاعات کاربر با موفقیت به‌روزرسانی شد", parent=edit_win)
+                edit_win.destroy()
+                refresh_list()
+                on_user_select()
+                
+                if app and current_user and username == current_user:
+                    if new_username != username:
+                        app.current_username = new_username
+                    if new_fullname != app.current_user:
+                        app.current_user = new_fullname
+                        app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {new_fullname}")
+                    if new_role != app.current_role:
+                        app.current_role = new_role
+                        for child in app.winfo_children():
+                            if isinstance(child, tk.Toplevel):
+                                if child.title() in ["پنل مدیریت", "مدیریت کاربران", "آمار تردد", "تحلیل آماری تردد", "خروجی اکسل لاگ حسابرسی"]:
+                                    child.destroy()
+                        if on_self_role_change:
+                            on_self_role_change()
+            except Exception as e:
+                messagebox.showerror("خطا", f"خطا در به‌روزرسانی: {str(e)}", parent=edit_win)
+
+        # Buttons
+        btn_frame_edit = tb.Frame(form_frame)
+        btn_frame_edit.pack(fill=tk.X, pady=(20, 0))
+
+        tb.Button(
+            btn_frame_edit, text="انصراف", command=edit_win.destroy,
+            bootstyle=(SECONDARY, OUTLINE), width=12
+        ).pack(side=tk.RIGHT, padx=5)
+
+        tb.Button(
+            btn_frame_edit, text="ذخیره تغییرات", command=save_changes,
+            bootstyle=SUCCESS, width=12
+        ).pack(side=tk.RIGHT, padx=5)
+
+        edit_win.bind('<Return>', lambda e: save_changes())
+
+    edit_btn.config(command=edit_selected)
+    delete_btn.config(command=delete_selected)
+
+    tb.Button(
+        action_frame, text="ثبت کاربر", command=add_user, bootstyle=SUCCESS
+    ).pack(fill=tk.X, pady=15, padx=20)
+
+    refresh_list()
+    on_user_select()
 
 def show_daily_stats_ui(parent_win):
     ensure_fonts()
@@ -227,7 +562,7 @@ def show_daily_stats_ui(parent_win):
     stats_win.title("آمار تردد")
     stats_win.geometry("420x420")
     stats_win.resizable(False,False)
-    try: stats_win.iconbitmap(utils.resource_path('app_icon.ico'))
+    try: stats_win.iconbitmap(utils.resource_path(os.path.join('assets', 'app_icon.ico')))
     except: pass
     
     main_frame = tb.Frame(stats_win, padding=15)
@@ -783,7 +1118,7 @@ def open_change_password_window(parent, username):
     cp_win.geometry("400x700")
     cp_win.resizable(False, False)
     try:
-        cp_win.iconbitmap(utils.resource_path('app_icon.ico'))
+        cp_win.iconbitmap(utils.resource_path(os.path.join('assets', 'app_icon.ico')))
     except:
         pass
 
@@ -791,7 +1126,7 @@ def open_change_password_window(parent, username):
     canvas = tk.Canvas(cp_win, highlightthickness=0)
     canvas.pack(fill=tk.BOTH, expand=True)
 
-    bg_path = utils.resource_path("change_password_bg.png")
+    bg_path = utils.resource_path(os.path.join('assets', 'change_password_bg.png'))
     bg_image = None
     if os.path.exists(bg_path):
         try:
@@ -915,7 +1250,7 @@ def open_change_password_window(parent, username):
 
     cp_win.bind('<Return>', lambda e: do_change())
 
-def open_developer_mode(app):
+def open_developer_mode(app, on_self_role_change=None):
     ensure_fonts()
     dev_win = tb.Toplevel(app)
     dev_win.title("پنل مدیریت")
@@ -924,7 +1259,7 @@ def open_developer_mode(app):
     try: dev_win.iconbitmap(utils.resource_path('app_icon.ico'))
     except: pass
 
-    bg_path = utils.resource_path("developer.png")
+    bg_path = utils.resource_path(os.path.join('assets', 'developer.png'))
     if os.path.exists(bg_path):
         try:
             original_img = Image.open(bg_path)
@@ -939,7 +1274,7 @@ def open_developer_mode(app):
     tb.Label(dev_win, text="ابزارهای مدیریت سیستم", font=(FONT_MAIN, 12, "bold"), bootstyle=PRIMARY).pack(pady=(40, 30))
     
     buttons = [
-        ("مدیریت کاربران", lambda: open_user_manager(dev_win, app=app, current_user=app.current_username), PRIMARY),
+        ("مدیریت کاربران", lambda: open_user_manager(dev_win, app=app, current_user=app.current_username, on_self_role_change=on_self_role_change), PRIMARY),
         ("تعداد ورودی/خروجی های ثبت شده", lambda: show_daily_stats_ui(dev_win), INFO),
         ("نمودار تحلیل ترافیک", lambda: show_heatmap_analytics(app), WARNING),
         ("لاگ حسابرسی (خروجی اکسل)",lambda: export_audit_log_excel(dev_win),INFO),

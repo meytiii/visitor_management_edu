@@ -1,7 +1,7 @@
 import os
 from tkinter import messagebox
 
-APP_VERSION = "3.1.4"
+APP_VERSION = "3.2.4"
 
 APP_DATA_DIR = os.path.join(os.environ['PROGRAMDATA'], 'VisitorSystem')
 
@@ -97,6 +97,7 @@ AUDIT_EVENT_TYPES = [
     "user_created",
     "user_deleted",
     "user_password_changed",
+    "user_updated",
     "backup_created",
     "backup_restored",
     "data_exported",
