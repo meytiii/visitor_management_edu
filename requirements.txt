@@ -7,3 +7,4 @@ matplotlib
 openpyxl
 python-bidi
 arabic-reshaper 
+ttkbootstrap
