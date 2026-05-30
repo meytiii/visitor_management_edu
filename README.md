@@ -78,8 +78,9 @@ pip install -r requirements.txt
 
 # Run the application
 python main.py```
-
+```
 
 ### Build a Standalone EXE (optional)
 ```bash
-pyinstaller --noconsole --onefile --icon=assets/app_icon.ico --add-data "assets;assets" main.py```
+pyinstaller --noconsole --onefile --icon=assets/app_icon.ico --add-data "assets;assets" main.py
+```
