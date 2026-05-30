@@ -66,4 +66,9 @@ venv\Scripts\activate      # On Windows
 pip install -r requirements.txt
 
 # Run the application
-python main.py
+python main.py```
+
+
+### Build a Standalone EXE (optional)
+```bash
+PyInstaller --noconsole --onefile --icon=assets/app_icon.ico --add-data "assets;assets" main.py```
