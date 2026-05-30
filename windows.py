@@ -236,7 +236,7 @@ def open_user_manager(parent, app=None, current_user=None, on_self_role_change=N
         bootstyle=PRIMARY
     ).pack(side=tk.RIGHT, padx=10)
 
-    # --- Edit and Delete buttons frame (side by side) ---
+    # --- Edit and Delete buttons frame ---
     edit_delete_frame = tk.Frame(action_frame, bg="white")
     edit_delete_frame.pack(fill=tk.X, pady=(10, 5), padx=20)
 
@@ -372,7 +372,6 @@ def open_user_manager(parent, app=None, current_user=None, on_self_role_change=N
             except Exception:
                 pass
 
-        # Semi-transparent card
         card_x1, card_y1 = 30, 50
         card_x2, card_y2 = 370, 750
         points = [
@@ -425,7 +424,7 @@ def open_user_manager(parent, app=None, current_user=None, on_self_role_change=N
             bootstyle=PRIMARY
         ).pack(side=tk.RIGHT, padx=10)
 
-        # Password fields (optional)
+        # Password fields
         tb.Label(
             form_frame, text=": رمز عبور جدید (اختیاری)", font=(FONT_MAIN, 12),
             background=''
@@ -662,7 +661,7 @@ def show_heatmap_analytics(app):
         full_counts = [counts_found[hours_found.index(h)] if h in hours_found else 0 for h in full_hours]
 
         import matplotlib
-        matplotlib.rcParams['font.family'] = 'Tahoma'  # prevents missing Latin glyph warnings on tick labels
+        matplotlib.rcParams['font.family'] = 'Tahoma'
 
         fig = Figure(figsize=(8, 5), dpi=100)
         fig.patch.set_facecolor('#ffffff')

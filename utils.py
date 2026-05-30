@@ -51,10 +51,6 @@ def validate_national_id(nid):
         return False, f"خطا در اعتبارسنجی کد ملی: {str(e)}"
 
 def validate_persian_name(name):
-    """
-    Validate Persian/Arabic names
-    Allows Persian/Arabic letters, space, and dot
-    """
     import re
     
     persian_pattern = re.compile(r'^[\u0600-\u06FF\uFB8A\u067E\u0686\u06AF\u200C\u200F\.\s]+$')
@@ -75,10 +71,6 @@ def validate_persian_name(name):
     return True, ""
 
 def validate_numeric(text):
-    """
-    Basic numeric validation for entry widget
-    Also prevents more than 10 digits
-    """
     if text == "":
         return True
     
@@ -100,7 +92,6 @@ def make_farsi(text):
         return text
 
 def create_backup():
-    """Copies the database from its hidden location to the app's current directory."""
     try:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_filename = f"backup_visitor_log_{timestamp}.db"
