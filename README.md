@@ -9,7 +9,6 @@
 
 ![Background Image](./assets/background.png)
 
----
 
 > # 🚨 **IMPORTANT NOTICE** 🚨
 >
@@ -20,6 +19,10 @@
 > ### Please use the new repository for all future updates, features, and support.
 >
 > *This repository is archived and will not receive any further updates.*
+
+---
+
+
 
 
 ## ✨ Key Features
