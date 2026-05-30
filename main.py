@@ -25,7 +25,7 @@ app.geometry("1050x600")
 app.resizable(False, False)
 
 try:
-    icon_path = utils.resource_path('app_icon.ico')
+    icon_path = utils.resource_path(os.path.join('assets', 'app_icon.ico'))
     app.iconbitmap(icon_path)
     app.iconbitmap(default=icon_path)
 except Exception: 
@@ -38,7 +38,7 @@ FONT_TABLE = "B Nazanin" if "B Nazanin" in available_fonts else "Tahoma"
 
 # --- BACKGROUND FUNCTION ---
 def setup_background(window_root):
-    bg_path = utils.resource_path("background.png")
+    bg_path = utils.resource_path(os.path.join('assets', 'background.png'))
     if not os.path.exists(bg_path): return
     try:
         window_root.original_img = Image.open(bg_path)
@@ -215,7 +215,7 @@ def submit_visitor():
     now = datetime.now()
     entry_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     shamsi_date_str = jdatetime.date.fromgregorian(date=now.date()).strftime("%Y/%m/%d")
-    registrar = getattr(app, 'current_user', 'سیستم') 
+    registrar = getattr(app, 'current_user', 'سیستم')
     username = getattr(app, 'current_username', 'سیستم')
     try:
         conn = sqlite3.connect(config.DB_PATH)
@@ -292,28 +292,27 @@ btn_frame.grid(row=5, column=0, columnspan=2, pady=(15, 10), sticky="ew")
 
 tb.Button(btn_frame, text="ثبت و چاپ رسید✅", command=submit_visitor, bootstyle=SUCCESS).pack(pady=4, fill=tk.X)
 tb.Button(btn_frame, text="مشاهده و جستجوی سوابق📚", command=lambda: windows.open_search_window(app), bootstyle=PRIMARY).pack(pady=4, fill=tk.X)
-tb.Button(btn_frame, text="راهنما📑", command=windows.show_help_popup, bootstyle=SECONDARY).pack(pady=4, fill=tk.X)
+tb.Button(btn_frame, text="راهنما📑", command=lambda: windows.show_help_popup(getattr(app, 'current_role', 'guard')), bootstyle=SECONDARY).pack(pady=4, fill=tk.X)
 
 # --- LOGIN & MENU SETUP ---
-def setup_dashboard(username, role, full_name):
-    app.deiconify()
-    app.current_user = full_name
-    app.current_username = username
-    app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {full_name}")
+def rebuild_dashboard_menu():
+    role = getattr(app, 'current_role', 'guard')
+    full_name = getattr(app, 'current_user', '')
+    username = getattr(app, 'current_username', '')
     
     menubar = tk.Menu(app)
     if role == 'admin':
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app))
+        tools_menu.add_command(label="پنل مدیریت (Admin)", command=lambda: windows.open_developer_mode(app, rebuild_dashboard_menu))
         menubar.add_cascade(label="تنظیمات سیستم", menu=tools_menu)
     
-        user_menu = tk.Menu(menubar, tearoff=0)
+    user_menu = tk.Menu(menubar, tearoff=0)
 
     def change_password():
-        windows.open_change_password_window(app, app.current_username)
+        windows.open_change_password_window(app, username)
 
     def logout():
-        database.log_audit("logout", user=getattr(app, "current_username", None))
+        database.log_audit("logout", user=username)
         for child in app.winfo_children():
             if isinstance(child, tk.Toplevel):
                 child.destroy()
@@ -325,6 +324,14 @@ def setup_dashboard(username, role, full_name):
     user_menu.add_command(label="خروج از حساب", command=logout)
     menubar.add_cascade(label=f"حساب کاربری: {full_name}", menu=user_menu)
     app.config(menu=menubar)
+
+def setup_dashboard(username, role, full_name):
+    app.deiconify()
+    app.current_user = full_name
+    app.current_username = username
+    app.current_role = role
+    app.title(f"سامانه مدیریت ورود و خروج (اداره حراست)   |   کاربر: {full_name}")
+    rebuild_dashboard_menu()
 
 try:
     for widget in [entry_visitor_name, combo_department]:
