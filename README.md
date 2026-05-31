@@ -7,8 +7,6 @@
 
 **A professional desktop application for managing visitor check‑in/out, designed for educational organizations and administrative complexes.**
 
-![Background Image](./assets/background.png)
-
 
 > # 🚨 **IMPORTANT NOTICE** 🚨
 >
